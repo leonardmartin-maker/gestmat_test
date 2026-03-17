@@ -1,0 +1,9 @@
+.env
+.env.prod
+nginx/certbot/
+__pycache__
+*.pyc
+.claude/
+register.json
+node_modules/
+.next/

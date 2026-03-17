@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gestionmateriel-db
+    environment:
+      POSTGRES_DB: gestionmateriel
+      POSTGRES_USER: gestionmateriel
+      POSTGRES_PASSWORD: gestionmateriel
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ./backend
+    container_name: gestionmateriel-api
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "alembic upgrade head
+      && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  pgdata:
+  uploads:

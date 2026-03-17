@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  api:
+    build: ./backend
+    container_name: gm-api
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+    command: >
+      sh -c "alembic upgrade head
+      && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./gestion-materiel-frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: https://api-gestion-materiel.swissworktogether.ch
+    container_name: gm-frontend
+    restart: unless-stopped
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: gm-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+      - ./nginx/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - internal
+
+  certbot:
+    image: certbot/certbot
+    container_name: gm-certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
