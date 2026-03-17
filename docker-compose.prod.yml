@@ -18,6 +18,8 @@ services:
       - .env.prod
     depends_on:
       - db
+    ports:
+      - "127.0.0.1:8010:8000"
     command: >
       sh -c "alembic upgrade head
       && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
@@ -31,32 +33,10 @@ services:
         NEXT_PUBLIC_API_BASE_URL: https://api-gestion-materiel.swissworktogether.ch
     container_name: gm-frontend
     restart: unless-stopped
-    networks:
-      - internal
-
-  nginx:
-    image: nginx:alpine
-    container_name: gm-nginx
-    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certbot/conf:/etc/letsencrypt:ro
-      - ./nginx/certbot/www:/var/www/certbot:ro
-    depends_on:
-      - api
-      - frontend
+      - "127.0.0.1:3010:3000"
     networks:
       - internal
-
-  certbot:
-    image: certbot/certbot
-    container_name: gm-certbot
-    volumes:
-      - ./nginx/certbot/conf:/etc/letsencrypt
-      - ./nginx/certbot/www:/var/www/certbot
 
 volumes:
   pgdata:
