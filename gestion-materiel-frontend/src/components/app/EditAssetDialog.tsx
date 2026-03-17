@@ -40,7 +40,7 @@ export function EditAssetDialog({
   const [apiError, setApiError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: assetToDefaults(asset),
   });
 
