@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "admin@swissworktogether.ch", password: "admin123" },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (values: FormValues) => {
