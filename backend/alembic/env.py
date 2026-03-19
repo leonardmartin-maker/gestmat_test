@@ -9,7 +9,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import company, user, employee, asset, event, audit_log  # noqa: F401
+from app.models import company, user, employee, asset, event, audit_log, epi_category, maintenance_template, maintenance_task, maintenance_log  # noqa: F401
 
 
 config = context.config

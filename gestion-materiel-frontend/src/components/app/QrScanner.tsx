@@ -5,6 +5,10 @@ import { useEffect, useRef } from "react";
 function extractPublicId(decoded: string): string {
   try {
     const url = new URL(decoded);
+    // New format: /e/{publicId}
+    const pathMatch = url.pathname.match(/^\/e\/([a-f0-9]+)$/);
+    if (pathMatch) return pathMatch[1];
+    // Legacy format: /scan?id={publicId}
     const id = url.searchParams.get("id");
     if (id) return id;
   } catch {
@@ -22,11 +26,13 @@ export function QrScanner({ onScan, scanning }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<any>(null);
   const scannedRef = useRef(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     if (!scanning || !containerRef.current) return;
 
     scannedRef.current = false;
+    startedRef.current = false;
     let stopped = false;
 
     (async () => {
@@ -49,6 +55,13 @@ export function QrScanner({ onScan, scanning }: Props) {
           },
           () => {} // ignore scan failures
         );
+        if (!stopped) {
+          startedRef.current = true;
+        } else {
+          // Component unmounted while starting — clean up now
+          try { await scanner.stop(); } catch {}
+          try { scanner.clear(); } catch {}
+        }
       } catch (err) {
         console.error("Camera error:", err);
       }
@@ -57,9 +70,14 @@ export function QrScanner({ onScan, scanning }: Props) {
     return () => {
       stopped = true;
       const s = scannerRef.current;
-      if (s) {
-        s.stop().catch(() => {});
-        s.clear();
+      if (s && startedRef.current) {
+        s.stop()
+          .then(() => { try { s.clear(); } catch {} })
+          .catch(() => { try { s.clear(); } catch {} });
+        scannerRef.current = null;
+      } else if (s) {
+        // Scanner exists but hasn't fully started — just clear
+        try { s.clear(); } catch {}
         scannerRef.current = null;
       }
     };

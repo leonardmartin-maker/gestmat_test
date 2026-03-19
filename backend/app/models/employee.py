@@ -12,6 +12,7 @@ class Employee(Base):
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100))
     employee_code: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # ✅ Soft-delete

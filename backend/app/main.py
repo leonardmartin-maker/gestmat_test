@@ -1,12 +1,20 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.middleware.audit import AuditContextMiddleware
 
 app = FastAPI(title="gestionmateriel")
+
+# Serve uploaded files
+_upload_dir = Path(settings.UPLOAD_DIR)
+_upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_upload_dir)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,

@@ -5,6 +5,7 @@ import type { EventOut } from "@/lib/api/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/app/StatusBadge";
+import { AlertTriangle, Clock, Flag, FileWarning } from "lucide-react";
 
 function line(label: string, value: string) {
   return (
@@ -31,22 +32,28 @@ export function AlertsPanel({
   onOpenAsset: (id: number) => void;
 }) {
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-sm border-0 card-hover">
       <CardHeader>
-        <CardTitle className="text-base">Alertes ops</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-[#E17055]" />
+          Alertes ops
+        </CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-5">
         {/* Résumé */}
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-xl bg-[#F8F7FF] p-3">
           {line("Maintenance", String(maintenance.length))}
           {line("Retirés", String(retired.length))}
           {line("Données manquantes", String(missing.length))}
         </div>
 
-        {/* Maintenance 오래 */}
+        {/* Maintenance > X jours */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">⚠️ Maintenance &gt; X jours</div>
+          <div className="text-sm font-medium flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-amber-500" />
+            Maintenance &gt; X jours
+          </div>
 
           {maintenanceAged.length === 0 ? (
             <div className="text-xs text-muted-foreground">Rien à signaler.</div>
@@ -56,7 +63,7 @@ export function AlertsPanel({
                 <button
                   key={x.asset.id}
                   type="button"
-                  className="w-full text-left rounded-md border p-2 hover:bg-muted"
+                  className="w-full text-left rounded-xl border p-3 hover:bg-purple-50/50 hover:shadow-sm transition-all"
                   onClick={() => onOpenAsset(x.asset.id)}
                   title="Ouvrir le matériel"
                 >
@@ -79,7 +86,10 @@ export function AlertsPanel({
 
         {/* ASSIGNED sans employee_id */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">🚩 Attribution sans employé</div>
+          <div className="text-sm font-medium flex items-center gap-1.5">
+            <Flag className="h-3.5 w-3.5 text-red-500" />
+            Attribution sans employé
+          </div>
 
           {assignedWithoutEmployee.length === 0 ? (
             <div className="text-xs text-muted-foreground">Aucun cas détecté.</div>
@@ -89,7 +99,7 @@ export function AlertsPanel({
                 <button
                   key={e.id}
                   type="button"
-                  className="w-full text-left rounded-md border p-2 hover:bg-muted"
+                  className="w-full text-left rounded-xl border p-3 hover:bg-purple-50/50 hover:shadow-sm transition-all"
                   onClick={() => onOpenAsset(e.asset_id)}
                   title="Ouvrir le matériel"
                 >
@@ -110,7 +120,10 @@ export function AlertsPanel({
 
         {/* Missing data */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">🧾 Données manquantes</div>
+          <div className="text-sm font-medium flex items-center gap-1.5">
+            <FileWarning className="h-3.5 w-3.5 text-amber-500" />
+            Données manquantes
+          </div>
 
           {missing.length === 0 ? (
             <div className="text-xs text-muted-foreground">Tout est clean.</div>
@@ -120,7 +133,7 @@ export function AlertsPanel({
                 <button
                   key={a.id}
                   type="button"
-                  className="w-full text-left rounded-md border p-2 hover:bg-muted"
+                  className="w-full text-left rounded-xl border p-3 hover:bg-purple-50/50 hover:shadow-sm transition-all"
                   onClick={() => onOpenAsset(a.id)}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -139,7 +152,7 @@ export function AlertsPanel({
           )}
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => { /* option: navigate vers /admin/audit-logs */ }}>
+        <Button variant="outline" size="sm" className="rounded-xl" onClick={() => { /* option: navigate vers /admin/audit-logs */ }}>
           Voir plus (bientôt)
         </Button>
       </CardContent>

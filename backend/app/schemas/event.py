@@ -4,6 +4,12 @@ from pydantic import BaseModel, Field
 from app.schemas.common import Meta
 
 
+class EventPhotoOut(BaseModel):
+    id: int
+    category: str
+    url: str
+
+
 class EventOut(BaseModel):
     id: int
     company_id: int
@@ -15,6 +21,8 @@ class EventOut(BaseModel):
     created_at: datetime
     km_value: int | None
     notes: str | None
+    damage_description: str | None = None
+    photos: list[EventPhotoOut] = []
 
     class Config:
         from_attributes = True

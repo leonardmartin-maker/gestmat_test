@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { RotateCcw } from "lucide-react";
 
 type Props = {
   publicId: string;
@@ -68,16 +69,22 @@ export function ReturnAssetDialog({ publicId, isVehicle, triggerLabel = "Retour"
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">{triggerLabel}</Button>
+        <Button variant="outline" className="rounded-xl gap-1.5">
+          <RotateCcw className="h-4 w-4" />
+          {triggerLabel}
+        </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Retour du matériel</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <RotateCcw className="h-5 w-5 text-[#74B9FF]" />
+            Retour du matériel
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-md border p-3 text-sm text-muted-foreground">
+          <div className="rounded-xl border bg-[#F8F7FF] p-3 text-sm text-muted-foreground">
             public_id: <span className="font-mono">{publicId}</span>
           </div>
 
@@ -102,10 +109,10 @@ export function ReturnAssetDialog({ publicId, isVehicle, triggerLabel = "Retour"
           {error && <div className="text-sm text-red-600">{String(error)}</div>}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            <Button variant="outline" className="rounded-xl" onClick={() => setOpen(false)} disabled={submitting}>
               Annuler
             </Button>
-            <Button onClick={submit} disabled={!canSubmit || submitting}>
+            <Button className="rounded-xl bg-[#6C5CE7] hover:bg-[#5A4BD1] text-white" onClick={submit} disabled={!canSubmit || submitting}>
               {submitting ? "Envoi…" : "Valider le retour"}
             </Button>
           </div>

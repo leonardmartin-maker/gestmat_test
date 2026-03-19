@@ -15,10 +15,13 @@ export type AssetOut = {
   status: string;
   public_id: string;
   plate: string | null;
+  model_name: string | null;
   km_current: number | null;
   insurance_date: string | null;
   inspection_date: string | null;
   epi_type: string | null;
+  epi_category_id: number | null;
+  epi_attributes: Record<string, string> | null;
   serial_number: string | null;
   next_inspection_date: string | null;
   notes: string | null;
@@ -81,10 +84,13 @@ export type AssetCreate = {
   name: string;
   ref?: string | null;
   plate?: string | null;
+  model_name?: string | null;
   km_current?: number | null;
   insurance_date?: string | null; // YYYY-MM-DD
   inspection_date?: string | null; // YYYY-MM-DD
   epi_type?: string | null;
+  epi_category_id?: number | null;
+  epi_attributes?: Record<string, string> | null;
   serial_number?: string | null;
   next_inspection_date?: string | null; // YYYY-MM-DD
   notes?: string | null;
@@ -101,10 +107,13 @@ export type AssetUpdate = {
   ref?: string | null;
   status?: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
   plate?: string | null;
+  model_name?: string | null;
   km_current?: number | null;
   insurance_date?: string | null;
   inspection_date?: string | null;
   epi_type?: string | null;
+  epi_category_id?: number | null;
+  epi_attributes?: Record<string, string> | null;
   serial_number?: string | null;
   next_inspection_date?: string | null;
   notes?: string | null;

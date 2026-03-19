@@ -24,6 +24,17 @@ class Settings(BaseSettings):
     # Si non fourni, on fallback sur JWT_SECRET côté code
     AUDIT_IP_SALT: str | None = None
 
+    # Uploads
+    UPLOAD_DIR: str = "/app/uploads"
+    MAX_PHOTO_SIZE_MB: int = 5
+
+    # SMTP (email de bienvenue employé)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "no-reply@swissworktogether.ch"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_ignore_empty=True,

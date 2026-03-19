@@ -6,11 +6,12 @@ import { listEmployees, type EmployeeOut } from "@/lib/api/employees";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { exportEmployeesCsv } from "@/lib/api/export";
-import { CreateEmployeeDialog } from "@/components/app/CreateEmployeeDialog";
 import { EmployeeDrawer } from "@/components/app/EmployeeDrawer";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+import { Users, Search, Download, UserSearch, ChevronLeft, ChevronRight, CircleCheck, XCircle } from "lucide-react";
 
 function label(e: EmployeeOut) {
   const name = `${e.first_name} ${e.last_name}`.trim();
@@ -79,20 +80,26 @@ export default function EmployeesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold">Employés</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6" style={{ color: "#6C5CE7" }} />
+            Employés
+          </h1>
           <p className="text-sm text-muted-foreground">{loading ? "Chargement…" : `${total} employé(s)`}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Input
-            className="w-[260px]"
-            placeholder="Rechercher (nom, code)…"
-            value={search}
-            onChange={(e) => {
-              setOffset(0);
-              setSearch(e.target.value);
-            }}
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="w-[260px] rounded-xl pl-10"
+              placeholder="Rechercher (nom, code)…"
+              value={search}
+              onChange={(e) => {
+                setOffset(0);
+                setSearch(e.target.value);
+              }}
+            />
+          </div>
 
           <Select
             value={active}
@@ -101,7 +108,7 @@ export default function EmployeesPage() {
               setActive(v as any);
             }}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[160px] rounded-xl">
               <SelectValue placeholder="Actifs" />
             </SelectTrigger>
             <SelectContent>
@@ -118,7 +125,7 @@ export default function EmployeesPage() {
               setLimit(Number(v));
             }}
           >
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[120px] rounded-xl">
               <SelectValue placeholder="Page" />
             </SelectTrigger>
             <SelectContent>
@@ -131,21 +138,22 @@ export default function EmployeesPage() {
 
           <Button
             variant="outline"
+            className="rounded-xl"
             onClick={() =>
               exportEmployeesCsv({
                 active: active === "ALL" ? undefined : active === "true",
               })
             }
           >
+            <Download className="h-4 w-4 mr-1" />
             Export CSV
           </Button>
-          <CreateEmployeeDialog onCreated={reload} />
         </div>
       </div>
 
-      {err && <div className="rounded-md border p-3 text-sm text-red-600">{String(err)}</div>}
+      {err && <div className="rounded-xl border p-3 text-sm text-red-600">{String(err)}</div>}
 
-      <div className="rounded-md border overflow-hidden">
+      <div className="rounded-2xl border-0 shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -157,17 +165,32 @@ export default function EmployeesPage() {
 
           <TableBody>
             {rows.map((e) => (
-              <TableRow key={e.id} className="cursor-pointer" onClick={() => openDrawer(e.id)}>
+              <TableRow key={e.id} className="cursor-pointer hover:bg-purple-50/50" onClick={() => openDrawer(e.id)}>
                 <TableCell className="font-medium">{label(e)}</TableCell>
                 <TableCell>{e.employee_code ?? "—"}</TableCell>
-                <TableCell>{e.active ? "Oui" : "Non"}</TableCell>
+                <TableCell>
+                  {e.active ? (
+                    <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
+                      <CircleCheck className="h-4 w-4" />
+                      Actif
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-gray-400 text-sm font-medium">
+                      <XCircle className="h-4 w-4" />
+                      Inactif
+                    </span>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
 
             {!loading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-8">
-                  Aucun résultat
+                <TableCell colSpan={3} className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <UserSearch className="h-10 w-10 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">Aucun résultat</p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -181,11 +204,13 @@ export default function EmployeesPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" disabled={!canPrev || loading} onClick={() => setOffset(Math.max(0, offset - limit))}>
+          <Button variant="outline" className="rounded-xl" disabled={!canPrev || loading} onClick={() => setOffset(Math.max(0, offset - limit))}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
             Précédent
           </Button>
-          <Button variant="outline" disabled={!canNext || loading} onClick={() => setOffset(offset + limit)}>
+          <Button variant="outline" className="rounded-xl" disabled={!canNext || loading} onClick={() => setOffset(offset + limit)}>
             Suivant
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </div>

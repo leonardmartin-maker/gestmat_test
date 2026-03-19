@@ -7,6 +7,21 @@ import { KpiCard } from "@/components/app/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  Package,
+  UserCheck,
+  CircleCheck,
+  Activity,
+  HeartPulse,
+  Zap,
+  ClipboardList,
+  BarChart3,
+  AlertTriangle,
+  TrendingUp,
+  Users,
+  RefreshCw,
+  ArrowRight,
+} from "lucide-react";
 
 import { listEvents, type EventOut } from "@/lib/api/events";
 import { EventsHeatmap7d } from "@/components/app/EventsHeatmap7d";
@@ -372,13 +387,14 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold">Bonjour ! 👋</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Vue rapide — état du parc, activité et actions prioritaires
           </p>
         </div>
-        <Button variant="outline" onClick={refresh} disabled={loading}>
-          {loading ? "…" : "Rafraîchir"}
+        <Button variant="outline" className="rounded-xl gap-2" onClick={refresh} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          {loading ? "Chargement…" : "Rafraîchir"}
         </Button>
       </div>
 
@@ -399,56 +415,63 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <KpiCard label="Matériels (total)" value={data.total_assets} />
+            <KpiCard label="Matériels (total)" value={data.total_assets} icon={Package} color="#6C5CE7" />
             <KpiCard
               label="Attribués"
               value={data.assigned_assets}
               hint={`(${pct(data.assigned_assets, data.total_assets)})`}
+              icon={UserCheck}
+              color="#74B9FF"
             />
             <KpiCard
               label="Disponibles"
               value={data.available_assets}
               hint={`(${pct(data.available_assets, data.total_assets)})`}
+              icon={CircleCheck}
+              color="#00B894"
             />
-            <KpiCard label="Événements (7j)" value={data.last_7_days_events} />
+            <KpiCard label="Événements (7j)" value={data.last_7_days_events} icon={Activity} color="#FDCB6E" />
           </>
         )}
       </div>
 
       {/* OPS TERRAIN */}
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 rounded-2xl shadow-sm border-0 card-hover">
           <CardHeader>
-            <CardTitle className="text-base">Ops terrain</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-[#6C5CE7]" />
+              Ops terrain
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-3">
+          <CardContent className="grid gap-3 sm:grid-cols-3">
             {loading || !data ? (
               <>
-                <Skeleton className="h-[84px] w-full" />
-                <Skeleton className="h-[84px] w-full" />
-                <Skeleton className="h-[84px] w-full" />
+                <Skeleton className="h-[84px] w-full rounded-xl" />
+                <Skeleton className="h-[84px] w-full rounded-xl" />
+                <Skeleton className="h-[84px] w-full rounded-xl" />
               </>
             ) : (
               <>
-                <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Disponibilité</div>
-                  <div className="text-2xl font-semibold">{ops.availablePct}%</div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                  <div className="text-xs text-emerald-600 font-medium">Disponibilité</div>
+                  <div className="text-2xl font-bold text-emerald-700">{ops.availablePct}%</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {data.available_assets} dispo / {data.total_assets} total
                   </div>
                 </div>
 
-                <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Attribués</div>
-                  <div className="text-2xl font-semibold">{ops.assignedPct}%</div>
+                <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                  <div className="text-xs text-blue-600 font-medium">Attribués</div>
+                  <div className="text-2xl font-bold text-blue-700">{ops.assignedPct}%</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {data.assigned_assets} attribués
                   </div>
                 </div>
 
-                <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Maintenance</div>
-                  <div className="text-2xl font-semibold">{ops.maintPct}%</div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+                  <div className="text-xs text-amber-600 font-medium">Maintenance</div>
+                  <div className="text-2xl font-bold text-amber-700">{ops.maintPct}%</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {data.maintenance_assets} en maintenance
                   </div>
@@ -458,14 +481,18 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl shadow-sm border-0 card-hover">
           <CardHeader>
-            <CardTitle className="text-base">Raccourcis</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Zap className="h-4 w-4 text-[#FDCB6E]" />
+              Raccourcis
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex gap-2 flex-wrap">
             <Button
               size="sm"
               variant="outline"
+              className="rounded-xl"
               onClick={() => {
                 const first = maintenanceAssets[0];
                 if (first) openAsset(first.id);
@@ -478,6 +505,7 @@ export default function DashboardPage() {
             <Button
               size="sm"
               variant="outline"
+              className="rounded-xl"
               onClick={() => {
                 const first = missingAssets[0];
                 if (first) openAsset(first.id);
@@ -490,6 +518,7 @@ export default function DashboardPage() {
             <Button
               size="sm"
               variant="outline"
+              className="rounded-xl"
               onClick={() => {
                 const first = retiredAssets[0];
                 if (first) openAsset(first.id);
@@ -503,24 +532,27 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 1: Health + Quick actions */}
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card className={`lg:col-span-1 border ${health ? toneClass(health.tone) : ""}`}>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className={`lg:col-span-1 rounded-2xl shadow-sm border-0 card-hover ${health ? toneClass(health.tone) : ""}`}>
           <CardHeader>
-            <CardTitle className="text-base">Santé du parc</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <HeartPulse className="h-4 w-4 text-[#E17055]" />
+              Santé du parc
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading || !data || !health ? (
               <>
-                <Skeleton className="h-6 w-[40%]" />
-                <Skeleton className="h-4 w-[80%]" />
-                <Skeleton className="h-4 w-[70%]" />
+                <Skeleton className="h-6 w-[40%] rounded-lg" />
+                <Skeleton className="h-4 w-[80%] rounded-lg" />
+                <Skeleton className="h-4 w-[70%] rounded-lg" />
               </>
             ) : (
               <>
                 <div className="flex items-end justify-between">
                   <div>
                     <div className={`text-sm font-medium ${toneText(health.tone)}`}>{health.label}</div>
-                    <div className="text-3xl font-semibold">{health.score}</div>
+                    <div className="text-3xl font-bold">{health.score}</div>
                   </div>
                   <div className="text-xs text-muted-foreground">/ 100</div>
                 </div>
@@ -533,12 +565,13 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                <div className="rounded-md border bg-background p-3">
-                  <div className="text-xs text-muted-foreground mb-1">Raccourcis</div>
+                <div className="rounded-xl border bg-background p-3">
+                  <div className="text-xs text-muted-foreground mb-2">Raccourcis</div>
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       size="sm"
                       variant="outline"
+                      className="rounded-xl"
                       onClick={() => {
                         const first = missingAssets[0];
                         if (first) openAsset(first.id);
@@ -550,6 +583,7 @@ export default function DashboardPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="rounded-xl"
                       onClick={() => {
                         const first = maintenanceAssets[0];
                         if (first) openAsset(first.id);
@@ -565,27 +599,31 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-2xl shadow-sm border-0 card-hover">
           <CardHeader>
-            <CardTitle className="text-base">Actions prioritaires</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-[#6C5CE7]" />
+              Actions prioritaires
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading || !data ? (
               <>
-                <Skeleton className="h-[64px] w-full" />
-                <Skeleton className="h-[64px] w-full" />
-                <Skeleton className="h-[64px] w-full" />
+                <Skeleton className="h-[64px] w-full rounded-xl" />
+                <Skeleton className="h-[64px] w-full rounded-xl" />
+                <Skeleton className="h-[64px] w-full rounded-xl" />
               </>
             ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {todo.map((t, idx) => (
-                  <div key={idx} className="rounded-md border p-3">
+                  <div key={idx} className="rounded-xl border p-4 hover:shadow-sm transition-shadow">
                     <div className="font-medium text-sm">{t.title}</div>
                     <div className="text-sm text-muted-foreground mt-1">{t.desc}</div>
                     {t.cta && t.onClick && (
                       <div className="mt-3">
-                        <Button size="sm" variant="outline" onClick={t.onClick}>
+                        <Button size="sm" variant="outline" className="rounded-xl gap-1" onClick={t.onClick}>
                           {t.cta}
+                          <ArrowRight className="h-3 w-3" />
                         </Button>
                       </div>
                     )}
@@ -598,19 +636,22 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 2: Alerts (right) + Activity (left) */}
-      <div className="grid gap-3 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-3">
-          <Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4">
+          <Card className="rounded-2xl shadow-sm border-0 card-hover">
             <CardHeader>
-              <CardTitle className="text-base">Activité</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[#6C5CE7]" />
+                Activité
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <>
-                  <Skeleton className="h-5 w-[60%]" />
+                  <Skeleton className="h-5 w-[60%] rounded-lg" />
                   <div className="mt-4 flex items-end gap-2">
                     {Array.from({ length: 7 }).map((_, i) => (
-                      <Skeleton key={i} className="h-[72px] w-6" />
+                      <Skeleton key={i} className="h-[72px] w-6 rounded-lg" />
                     ))}
                   </div>
                 </>
@@ -620,17 +661,20 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl shadow-sm border-0 card-hover">
             <CardHeader>
-              <CardTitle className="text-base">Rotation suspecte (48h)</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-[#E17055]" />
+                Rotation suspecte (48h)
+              </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-2">
               {loading ? (
                 <>
-                  <Skeleton className="h-5 w-[70%]" />
-                  <Skeleton className="h-5 w-[60%]" />
-                  <Skeleton className="h-5 w-[65%]" />
+                  <Skeleton className="h-5 w-[70%] rounded-lg" />
+                  <Skeleton className="h-5 w-[60%] rounded-lg" />
+                  <Skeleton className="h-5 w-[65%] rounded-lg" />
                 </>
               ) : suspicious.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
@@ -643,7 +687,7 @@ export default function DashboardPage() {
                       key={x.assetId}
                       type="button"
                       onClick={() => openAsset(x.assetId)}
-                      className="w-full text-left rounded-md border p-3 hover:bg-muted transition"
+                      className="w-full text-left rounded-xl border p-4 hover:bg-purple-50/50 hover:shadow-sm transition-all"
                       title="Ouvrir le matériel"
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -666,16 +710,19 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl shadow-sm border-0 card-hover">
             <CardHeader>
-              <CardTitle className="text-base">Derniers mouvements</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[#74B9FF]" />
+                Derniers mouvements
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="space-y-2">
-                  <Skeleton className="h-[72px] w-full" />
-                  <Skeleton className="h-[72px] w-full" />
-                  <Skeleton className="h-[72px] w-full" />
+                  <Skeleton className="h-[72px] w-full rounded-xl" />
+                  <Skeleton className="h-[72px] w-full rounded-xl" />
+                  <Skeleton className="h-[72px] w-full rounded-xl" />
                 </div>
               ) : (
                 <RecentEvents events={events.slice(0, 6)} onOpenAsset={openAsset} />
@@ -683,16 +730,19 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl shadow-sm border-0 card-hover">
             <CardHeader>
-              <CardTitle className="text-base">Matériels les plus sollicités (7j)</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[#00B894]" />
+                Matériels les plus sollicités (7j)
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {loading ? (
                 <>
-                  <Skeleton className="h-5 w-[70%]" />
-                  <Skeleton className="h-5 w-[60%]" />
-                  <Skeleton className="h-5 w-[65%]" />
+                  <Skeleton className="h-5 w-[70%] rounded-lg" />
+                  <Skeleton className="h-5 w-[60%] rounded-lg" />
+                  <Skeleton className="h-5 w-[65%] rounded-lg" />
                 </>
               ) : ops.topAssets.length === 0 ? (
                 <div className="text-sm text-muted-foreground">Pas assez d’événements pour classer.</div>
@@ -702,7 +752,7 @@ export default function DashboardPage() {
                     <button
                       key={x.assetId}
                       type="button"
-                      className="w-full rounded-md border p-3 text-left hover:bg-muted"
+                      className="w-full rounded-xl border p-4 text-left hover:bg-purple-50/50 hover:shadow-sm transition-all"
                       onClick={() => openAsset(x.assetId)}
                       title="Ouvrir la fiche"
                     >
@@ -720,18 +770,19 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl shadow-sm border-0 card-hover">
             <CardHeader>
-              <CardTitle className="text-base">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-[#6C5CE7]" />
                 Employés les plus actifs (7j)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {loading ? (
                 <>
-                  <Skeleton className="h-5 w-[70%]" />
-                  <Skeleton className="h-5 w-[60%]" />
-                  <Skeleton className="h-5 w-[65%]" />
+                  <Skeleton className="h-5 w-[70%] rounded-lg" />
+                  <Skeleton className="h-5 w-[60%] rounded-lg" />
+                  <Skeleton className="h-5 w-[65%] rounded-lg" />
                 </>
               ) : ops.topEmployees.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
@@ -742,7 +793,7 @@ export default function DashboardPage() {
                   {ops.topEmployees.map((x) => (
                     <div
                       key={x.employeeId}
-                      className="rounded-md border p-3"
+                      className="rounded-xl border p-4 hover:bg-purple-50/50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-medium">

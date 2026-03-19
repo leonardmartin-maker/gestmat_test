@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import get_current_user
 
-from app.api.routers.public import auth, health
-from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance
+from app.api.routers.public import auth, health, scan as public_scan
+from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs
 
 api_router = APIRouter()
 
@@ -11,6 +11,7 @@ api_router = APIRouter()
 public_router = APIRouter()
 public_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 public_router.include_router(health.router, tags=["health"])
+# public_scan moved to protected_router as employee-scan (auth required)
 
 # Protected (JWT requis)
 protected_router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -54,11 +55,32 @@ protected_router.include_router(
 # Users (ADMIN)
 protected_router.include_router(users.router, prefix="/admin/users", tags=["admin-users"])
 
-# Maintenance
+# EPI Categories
+protected_router.include_router(epi_categories.router, prefix="/epi-categories", tags=["epi-categories"])
+protected_router.include_router(epi_categories.admin_router, prefix="/admin/epi-categories", tags=["admin-epi-categories"])
+
+# Maintenance (legacy overview)
 protected_router.include_router(maintenance.router, prefix="/maintenance", tags=["maintenance"])
+
+# Maintenance Templates (ADMIN)
+protected_router.include_router(
+    maintenance_templates.admin_router,
+    prefix="/admin/maintenance-templates",
+    tags=["admin-maintenance-templates"],
+)
+
+# Maintenance Tasks (read: all, write: manager/admin)
+protected_router.include_router(maintenance_tasks.router, prefix="/maintenance", tags=["maintenance-tasks"])
+protected_router.include_router(maintenance_tasks.write_router, prefix="/maintenance", tags=["maintenance-tasks"])
+
+# Maintenance Logs (read: all)
+protected_router.include_router(maintenance_logs.router, prefix="/maintenance/logs", tags=["maintenance-logs"])
 
 # Export CSV (MANAGER/ADMIN)
 protected_router.include_router(export.router, prefix="/export", tags=["export"])
+
+# Employee self-service scan (authenticated — any role)
+protected_router.include_router(public_scan.router, prefix="/employee-scan", tags=["employee-scan"])
 
 api_router.include_router(public_router)
 api_router.include_router(protected_router)

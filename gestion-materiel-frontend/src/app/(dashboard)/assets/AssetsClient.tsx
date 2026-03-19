@@ -7,12 +7,15 @@ import { listAssetsWithAssignee, type AssetOutWithAssignee } from "@/lib/api/ass
 import { exportAssetsCsv } from "@/lib/api/export";
 import { CreateAssetDialog } from "@/components/app/CreateAssetDialog";
 import { AssetDrawer } from "@/components/app/AssetDrawer";
+import { useAuth } from "@/lib/auth/auth-context";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Package, Search, Download, Plus, ChevronLeft, ChevronRight, PackageSearch, Filter, QrCode } from "lucide-react";
+import Link from "next/link";
 
 function assigneeLabel(a: AssetOutWithAssignee) {
   const asg = a.assigned_to;
@@ -27,7 +30,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
     <button
       type="button"
       onClick={onClear}
-      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs hover:bg-muted"
+      className="inline-flex items-center gap-2 rounded-full border bg-[#6C5CE7]/10 text-[#6C5CE7] border-[#6C5CE7]/20 px-3 py-1 text-xs hover:bg-[#6C5CE7]/20"
       title="Retirer ce filtre"
     >
       <span>{label}</span>
@@ -38,6 +41,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 
 export default function AssetsClient() {
   const router = useRouter();
+  const { canWrite } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
@@ -179,22 +183,28 @@ export default function AssetsClient() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-xl font-semibold">Matériel</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Package className="h-6 w-6" style={{ color: "#6C5CE7" }} />
+              Matériel
+            </h1>
             <p className="text-sm text-muted-foreground">
               {loading ? "Chargement…" : `${total} élément(s)`}
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <Input
-              className="w-[280px]"
-              placeholder="Rechercher (nom, ref, plaque, série…)…"
-              value={search}
-              onChange={(e) => {
-                setOffset(0);
-                setSearch(e.target.value);
-              }}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="w-[280px] pl-10 rounded-xl"
+                placeholder="Rechercher (nom, ref, plaque, série…)…"
+                value={search}
+                onChange={(e) => {
+                  setOffset(0);
+                  setSearch(e.target.value);
+                }}
+              />
+            </div>
 
             <Select
               value={category}
@@ -203,7 +213,7 @@ export default function AssetsClient() {
                 setCategory(v);
               }}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[160px] rounded-xl">
                 <SelectValue placeholder="Catégorie" />
               </SelectTrigger>
               <SelectContent>
@@ -220,7 +230,7 @@ export default function AssetsClient() {
                 setStatus(v);
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] rounded-xl">
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
@@ -239,7 +249,7 @@ export default function AssetsClient() {
                 setLimit(Number(v));
               }}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[120px] rounded-xl">
                 <SelectValue placeholder="Page" />
               </SelectTrigger>
               <SelectContent>
@@ -259,7 +269,7 @@ export default function AssetsClient() {
                 setDir(d as any);
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] rounded-xl">
                 <SelectValue placeholder="Tri" />
               </SelectTrigger>
               <SelectContent>
@@ -274,18 +284,30 @@ export default function AssetsClient() {
               </SelectContent>
             </Select>
 
-            <Button
-              variant="outline"
-              onClick={() =>
-                exportAssetsCsv({
-                  status: status === "ALL" ? undefined : status,
-                  category: category === "ALL" ? undefined : category,
-                })
-              }
-            >
-              Export CSV
-            </Button>
-            <CreateAssetDialog onCreated={reload} />
+            {canWrite && (
+              <>
+                <Link href="/assets/qr-codes">
+                  <Button variant="outline" className="rounded-xl">
+                    <QrCode className="h-4 w-4 mr-1" />
+                    QR Codes
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() =>
+                    exportAssetsCsv({
+                      status: status === "ALL" ? undefined : status,
+                      category: category === "ALL" ? undefined : category,
+                    })
+                  }
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export CSV
+                </Button>
+                <CreateAssetDialog onCreated={reload} />
+              </>
+            )}
           </div>
         </div>
 
@@ -340,12 +362,12 @@ export default function AssetsClient() {
       </div>
 
       {error && (
-        <div className="rounded-md border p-3 text-sm text-red-600">
+        <div className="rounded-xl border p-3 text-sm text-red-600">
           {String(error)}
         </div>
       )}
 
-      <div className="rounded-md border overflow-hidden">
+      <div className="rounded-2xl border-0 shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -369,7 +391,7 @@ export default function AssetsClient() {
 
           <TableBody>
             {sortedRows.map((a) => (
-              <TableRow key={a.id} className="cursor-pointer" onClick={() => openDrawer(a.id)}>
+              <TableRow key={a.id} className="cursor-pointer hover:bg-purple-50/50" onClick={() => openDrawer(a.id)}>
                 <TableCell className="font-medium">
                   {a.name}
                   <div className="text-xs text-muted-foreground">public_id: {a.public_id}</div>
@@ -429,8 +451,11 @@ export default function AssetsClient() {
 
             {!loading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={colCount} className="text-center text-sm text-muted-foreground py-8">
-                  Aucun résultat
+                <TableCell colSpan={colCount} className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <PackageSearch className="h-10 w-10 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">Aucun résultat</p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -444,11 +469,13 @@ export default function AssetsClient() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" disabled={!canPrev || loading} onClick={() => setOffset(Math.max(0, offset - limit))}>
+          <Button variant="outline" className="rounded-xl" disabled={!canPrev || loading} onClick={() => setOffset(Math.max(0, offset - limit))}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
             Précédent
           </Button>
-          <Button variant="outline" disabled={!canNext || loading} onClick={() => setOffset(offset + limit)}>
+          <Button variant="outline" className="rounded-xl" disabled={!canNext || loading} onClick={() => setOffset(offset + limit)}>
             Suivant
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </div>

@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import secrets
+import string
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
@@ -6,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_company_id, get_db
 from app.core.permissions import require_admin, require_manager_or_admin
+from app.core.security import hash_password
 from app.models.employee import Employee
+from app.models.user import User
 from app.schemas.common import Meta
 from app.schemas.employee import (
     EmployeeCreate,
@@ -14,6 +18,13 @@ from app.schemas.employee import (
     EmployeeUpdate,
     EmployeeList,
 )
+from app.services.email import send_welcome_email
+
+
+def _generate_password(length: int = 10) -> str:
+    """Génère un mot de passe aléatoire lisible (lettres + chiffres)."""
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 # Routers séparés (branchés dans api/router.py)
 router = APIRouter()  # READ public (auth requis via protected_router)
@@ -86,18 +97,50 @@ def create_employee(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_company_id),
 ):
+    email = payload.email.strip() if payload.email else None
+
+    # Si email fourni, vérifier qu'il n'est pas déjà utilisé (User)
+    if email:
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Cet email est déjà utilisé par un compte existant")
+
     emp = Employee(
         company_id=company_id,
         first_name=payload.first_name.strip(),
         last_name=payload.last_name.strip(),
         employee_code=payload.employee_code.strip() if payload.employee_code else None,
+        email=email,
         active=True,
         is_deleted=False,
         deleted_at=None,
     )
     db.add(emp)
+    db.flush()  # obtenir emp.id avant commit
+
+    # Créer le compte utilisateur (role EMPLOYEE) si email fourni
+    temp_password = None
+    if email:
+        temp_password = _generate_password()
+        user = User(
+            company_id=company_id,
+            email=email,
+            password_hash=hash_password(temp_password),
+            role="EMPLOYEE",
+        )
+        db.add(user)
+
     db.commit()
     db.refresh(emp)
+
+    # Envoyer le mail de bienvenue avec les identifiants
+    if email and temp_password:
+        send_welcome_email(
+            to=email,
+            first_name=payload.first_name.strip(),
+            password=temp_password,
+        )
+
     return emp
 
 

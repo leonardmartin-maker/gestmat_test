@@ -19,6 +19,8 @@ type AuthState = {
 
   isAdmin: boolean;
   isManager: boolean;
+  isEmployee: boolean;
+  canWrite: boolean; // ADMIN or MANAGER (can create/edit/delete)
   hasRole: (roles: Role[]) => boolean;
 };
 
@@ -73,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = role === "ADMIN";
   const isManager = role === "MANAGER";
+  const isEmployee = role === "EMPLOYEE";
+  const canWrite = isAdmin || isManager;
   const hasRole = (roles: Role[]) => (role ? roles.includes(role) : false);
 
   const value = useMemo<AuthState>(
@@ -87,9 +91,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshMe,
       isAdmin,
       isManager,
+      isEmployee,
+      canWrite,
       hasRole,
     }),
-    [loading, token, user, isAuthenticated, role, isAdmin, isManager]
+    [loading, token, user, isAuthenticated, role, isAdmin, isManager, isEmployee, canWrite]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

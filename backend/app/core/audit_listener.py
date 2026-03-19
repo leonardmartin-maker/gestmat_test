@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,15 @@ def register_audit_models(*models: type) -> None:
         AUDITED_ENTITY_TYPES[m] = m.__name__.upper()
 
 
+def _json_safe(value):
+    """Convert non-JSON-serializable types (date, datetime) to ISO strings."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
+
+
 def _serialize_model(obj) -> dict:
     # on sérialise "simple" sans relations
     mapper = inspect(obj).mapper
@@ -23,7 +34,7 @@ def _serialize_model(obj) -> dict:
     for col in mapper.columns:
         k = col.key
         try:
-            data[k] = getattr(obj, k)
+            data[k] = _json_safe(getattr(obj, k))
         except Exception:
             data[k] = None
     return data

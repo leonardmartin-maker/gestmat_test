@@ -9,10 +9,123 @@ import { Separator } from "@/components/ui/separator";
 import { AssignAssetDialog } from "@/components/app/AssignAssetDialog";
 import { ReturnAssetDialog } from "@/components/app/ReturnAssetDialog";
 import { EditAssetDialog } from "@/components/app/EditAssetDialog";
+import { useAuth } from "@/lib/auth/auth-context";
+import { config } from "@/lib/config";
+import { AlertTriangle, X } from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/*  Event card with photos                                             */
+/* ------------------------------------------------------------------ */
+
+function photoUrl(path: string) {
+  // path is like /uploads/... — prefix with API base URL
+  return `${config.apiBaseUrl}${path}`;
+}
+
+function EventCard({ ev }: { ev: any }) {
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  const statePhotos = (ev.photos ?? []).filter((p: any) => p.category === "STATE");
+  const damagePhotos = (ev.photos ?? []).filter((p: any) => p.category === "DAMAGE");
+
+  return (
+    <>
+      <div className="rounded-md border p-3 text-sm space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="font-medium">{ev.event_type}</div>
+          <div className="text-muted-foreground">
+            {new Date(ev.occurred_at).toLocaleString()}
+          </div>
+        </div>
+
+        {(ev.km_value != null || ev.notes) && (
+          <div className="text-muted-foreground">
+            {ev.km_value != null ? `KM: ${ev.km_value}` : ""}
+            {ev.km_value != null && ev.notes ? " • " : ""}
+            {ev.notes ?? ""}
+          </div>
+        )}
+
+        {/* Damage report */}
+        {ev.damage_description && (
+          <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2">
+            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="text-xs font-semibold text-red-700">Dommage signalé</div>
+              <div className="text-xs text-red-600">{ev.damage_description}</div>
+            </div>
+          </div>
+        )}
+
+        {/* State photos */}
+        {statePhotos.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-1">Photos état</div>
+            <div className="flex flex-wrap gap-1.5">
+              {statePhotos.map((p: any) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setLightbox(photoUrl(p.url))}
+                  className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 hover:border-[#6C5CE7] transition-colors"
+                >
+                  <img src={photoUrl(p.url)} alt="État" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Damage photos */}
+        {damagePhotos.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-red-600 mb-1">Photos dommage</div>
+            <div className="flex flex-wrap gap-1.5">
+              {damagePhotos.map((p: any) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setLightbox(photoUrl(p.url))}
+                  className="w-14 h-14 rounded-lg overflow-hidden border border-red-200 hover:border-red-400 transition-colors"
+                >
+                  <img src={photoUrl(p.url)} alt="Dommage" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+          <img
+            src={lightbox}
+            alt="Photo agrandie"
+            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 
 export default function AssetDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { canWrite } = useAuth();
   const assetId = useMemo(() => Number(params.id), [params.id]);
 
   const [asset, setAsset] = useState<any>(null);
@@ -73,11 +186,11 @@ export default function AssetDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <EditAssetDialog asset={asset} onUpdated={refresh} />
-          {isAvailable && (
+          {canWrite && <EditAssetDialog asset={asset} onUpdated={refresh} />}
+          {canWrite && isAvailable && (
             <AssignAssetDialog publicId={asset.public_id} isVehicle={isVehicle} onDone={refresh} />
           )}
-          {isAssigned && (
+          {canWrite && isAssigned && (
             <ReturnAssetDialog publicId={asset.public_id} isVehicle={isVehicle} onDone={refresh} />
           )}
           <Button variant="outline" onClick={() => router.push("/assets")}>
@@ -165,21 +278,7 @@ export default function AssetDetailPage() {
                 <div className="text-sm font-semibold">{g.date}</div>
                 <div className="space-y-2">
                   {g.events.map((ev: any) => (
-                    <div key={ev.id} className="rounded-md border p-3 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium">{ev.event_type}</div>
-                        <div className="text-muted-foreground">
-                          {new Date(ev.occurred_at).toLocaleString()}
-                        </div>
-                      </div>
-                      {(ev.km_value != null || ev.notes) && (
-                        <div className="mt-2 text-muted-foreground">
-                          {ev.km_value != null ? `KM: ${ev.km_value}` : ""}
-                          {ev.km_value != null && ev.notes ? " • " : ""}
-                          {ev.notes ?? ""}
-                        </div>
-                      )}
-                    </div>
+                    <EventCard key={ev.id} ev={ev} />
                   ))}
                 </div>
               </div>

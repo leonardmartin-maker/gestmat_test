@@ -5,17 +5,40 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, get_db
 from app.core.security import verify_password, hash_password
 from app.models.user import User
+from app.models.employee import Employee
 
 router = APIRouter()
 
 
 @router.get("/me")
-def me(current_user: User = Depends(get_current_user)):
+def me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Try to find linked employee by email match
+    employee_code = None
+    full_name = None
+    emp = (
+        db.query(Employee)
+        .filter(
+            Employee.email == current_user.email,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted.is_(False),
+            Employee.active.is_(True),
+        )
+        .first()
+    )
+    if emp:
+        employee_code = emp.employee_code
+        full_name = f"{emp.first_name} {emp.last_name}"
+
     return {
         "id": current_user.id,
         "email": current_user.email,
         "company_id": current_user.company_id,
         "role": current_user.role,
+        "employee_code": employee_code,
+        "full_name": full_name,
     }
 
 

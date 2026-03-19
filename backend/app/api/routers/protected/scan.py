@@ -183,7 +183,7 @@ def get_qr_code(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset introuvable")
 
-    url = f"{settings.FRONTEND_BASE_URL}/scan?id={asset.public_id}"
+    url = f"{settings.FRONTEND_BASE_URL}/e/{asset.public_id}"
     img = qrcode.make(url, box_size=10, border=2)
     buf = io.BytesIO()
     img.save(buf, format="PNG")

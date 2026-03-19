@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.schemas.common import Meta
 
 
@@ -6,6 +6,7 @@ class EmployeeCreate(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     employee_code: str | None = Field(default=None, max_length=50)
+    email: EmailStr | None = None
 
     @field_validator("first_name", "last_name", "employee_code")
     @classmethod
@@ -20,6 +21,7 @@ class EmployeeUpdate(BaseModel):
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
     employee_code: str | None = Field(default=None, max_length=50)
+    email: EmailStr | None = None
     active: bool | None = None
 
     @field_validator("first_name", "last_name", "employee_code")
@@ -36,6 +38,7 @@ class EmployeeOut(BaseModel):
     first_name: str
     last_name: str
     employee_code: str | None
+    email: str | None
     active: bool
 
     class Config:

@@ -10,6 +10,7 @@ from app.core.permissions import require_admin, require_manager_or_admin
 from app.models.asset import Asset
 from app.models.employee import Employee
 from app.models.event import Event
+from app.models.event_photo import EventPhoto
 from app.schemas.asset import (
     AssetAssignee,
     AssetCreate,
@@ -20,7 +21,7 @@ from app.schemas.asset import (
     AssetUpdate,
 )
 from app.schemas.common import Meta
-from app.schemas.event import AssetHistoryOut, EventGroup, EventOut
+from app.schemas.event import AssetHistoryOut, EventGroup, EventOut, EventPhotoOut
 
 # Routers séparés (branchés dans api/router.py)
 router = APIRouter()  # READ user (auth via protected_router)
@@ -190,9 +191,21 @@ def asset_history(
         .all()
     )
 
+    # Load photos for all events in one query
+    event_ids = [e.id for e in events]
+    photos_by_event: dict[int, list[EventPhotoOut]] = defaultdict(list)
+    if event_ids:
+        photos = db.query(EventPhoto).filter(EventPhoto.event_id.in_(event_ids)).all()
+        for p in photos:
+            photos_by_event[p.event_id].append(
+                EventPhotoOut(id=p.id, category=p.category, url=f"/uploads/{p.file_path}")
+            )
+
     buckets: dict[date, list[EventOut]] = defaultdict(list)
     for e in events:
-        buckets[e.occurred_at.date()].append(EventOut.model_validate(e))
+        ev_out = EventOut.model_validate(e)
+        ev_out.photos = photos_by_event.get(e.id, [])
+        buckets[e.occurred_at.date()].append(ev_out)
 
     groups = [EventGroup(date=d, events=buckets[d]) for d in sorted(buckets.keys(), reverse=True)]
     return {"asset_id": asset_id, "groups": groups}
@@ -447,9 +460,21 @@ def asset_history_admin(
         .all()
     )
 
+    # Load photos for all events in one query
+    event_ids = [e.id for e in events]
+    photos_by_event: dict[int, list[EventPhotoOut]] = defaultdict(list)
+    if event_ids:
+        photos = db.query(EventPhoto).filter(EventPhoto.event_id.in_(event_ids)).all()
+        for p in photos:
+            photos_by_event[p.event_id].append(
+                EventPhotoOut(id=p.id, category=p.category, url=f"/uploads/{p.file_path}")
+            )
+
     buckets: dict[date, list[EventOut]] = defaultdict(list)
     for e in events:
-        buckets[e.occurred_at.date()].append(EventOut.model_validate(e))
+        ev_out = EventOut.model_validate(e)
+        ev_out.photos = photos_by_event.get(e.id, [])
+        buckets[e.occurred_at.date()].append(ev_out)
 
     groups = [EventGroup(date=d, events=buckets[d]) for d in sorted(buckets.keys(), reverse=True)]
     return {"asset_id": asset_id, "groups": groups}

@@ -1,6 +1,6 @@
 import { http } from "@/lib/api/http";
 
-export type Role = "ADMIN" | "MANAGER";
+export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
 
 export type MeOut = {
   id: number;
@@ -8,6 +8,7 @@ export type MeOut = {
   role: Role;
   company_id?: number;
   full_name?: string | null;
+  employee_code?: string | null;
 };
 
 export async function getMe() {

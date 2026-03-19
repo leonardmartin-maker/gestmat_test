@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Lock } from "lucide-react";
 
 export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false);
@@ -71,9 +72,12 @@ export function ChangePasswordDialog() {
           Changer le mot de passe
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Changer le mot de passe</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-[#6C5CE7]" />
+            Changer le mot de passe
+          </DialogTitle>
         </DialogHeader>
         <form className="space-y-3" onSubmit={handleSubmit}>
           <div className="space-y-1">
@@ -109,7 +113,7 @@ export function ChangePasswordDialog() {
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           {success && <p className="text-sm text-green-600">Mot de passe modifié</p>}
-          <Button className="w-full" type="submit" disabled={loading}>
+          <Button className="w-full rounded-xl bg-[#6C5CE7] hover:bg-[#5A4BD1] text-white" type="submit" disabled={loading}>
             {loading ? "…" : "Modifier"}
           </Button>
         </form>

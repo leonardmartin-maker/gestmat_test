@@ -1,5 +1,5 @@
 import secrets
-from sqlalchemy import String, Date, DateTime, func, ForeignKey, Integer, Text, Boolean
+from sqlalchemy import String, Date, DateTime, JSON, func, ForeignKey, Integer, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base_class import Base
 
@@ -18,12 +18,15 @@ class Asset(Base):
 
     # vehicle fields (nullable if EPI)
     plate: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    model_name: Mapped[str | None] = mapped_column(String(100), nullable=True)  # ex: "Honda PCX 125"
     km_current: Mapped[int | None] = mapped_column(Integer, nullable=True)
     insurance_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
     inspection_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
 
     # EPI fields (nullable if vehicle)
     epi_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    epi_category_id: Mapped[int | None] = mapped_column(ForeignKey("epi_categories.id"), nullable=True, index=True)
+    epi_attributes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     serial_number: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     next_inspection_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
 

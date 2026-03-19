@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserCheck } from "lucide-react";
 
 type Props = {
   publicId: string;
@@ -94,16 +95,22 @@ export function AssignAssetDialog({ publicId, isVehicle, triggerLabel = "Attribu
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>{triggerLabel}</Button>
+        <Button className="rounded-xl bg-[#00B894] hover:bg-[#00A382] text-white gap-1.5">
+          <UserCheck className="h-4 w-4" />
+          {triggerLabel}
+        </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Attribuer le matériel</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-[#00B894]" />
+            Attribuer le matériel
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-md border p-3 text-sm text-muted-foreground">
+          <div className="rounded-xl border bg-[#F8F7FF] p-3 text-sm text-muted-foreground">
             public_id: <span className="font-mono">{publicId}</span>
           </div>
 
@@ -149,10 +156,10 @@ export function AssignAssetDialog({ publicId, isVehicle, triggerLabel = "Attribu
           {error && <div className="text-sm text-red-600">{String(error)}</div>}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            <Button variant="outline" className="rounded-xl" onClick={() => setOpen(false)} disabled={submitting}>
               Annuler
             </Button>
-            <Button onClick={submit} disabled={!canSubmit || submitting}>
+            <Button className="rounded-xl bg-[#00B894] hover:bg-[#00A382] text-white" onClick={submit} disabled={!canSubmit || submitting}>
               {submitting ? "Envoi…" : "Attribuer"}
             </Button>
           </div>

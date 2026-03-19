@@ -5,6 +5,7 @@ export type EmployeeOut = {
   first_name: string;
   last_name: string;
   employee_code: string | null;
+  email: string | null;
   active: boolean;
 };
 
@@ -15,12 +16,14 @@ export type EmployeeCreate = {
   first_name: string;
   last_name: string;
   employee_code?: string | null;
+  email?: string | null;
 };
 
 export type EmployeeUpdate = {
   first_name?: string | null;
   last_name?: string | null;
   employee_code?: string | null;
+  email?: string | null;
   active?: boolean | null;
 };
 
