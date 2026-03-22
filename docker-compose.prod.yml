@@ -1,48 +1,61 @@
 services:
-  db:
+  db-prod:
     image: postgres:16
-    container_name: gm-db
+    container_name: gm-db-prod
     restart: unless-stopped
-    env_file:
-      - .env.prod
+    environment:
+      POSTGRES_USER: gestmat
+      POSTGRES_PASSWORD: gestmat_prod_secret_2026
+      POSTGRES_DB: gestmat_prod
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - gm-pgdata-prod:/var/lib/postgresql/data
     networks:
-      - internal
+      - gm-net-prod
 
-  api:
-    build: ./backend
-    container_name: gm-api
+  api-prod:
+    build:
+      context: ./backend
+    image: gestion-materiel-api-prod
+    container_name: gm-api-prod
     restart: unless-stopped
-    env_file:
-      - .env.prod
     depends_on:
-      - db
+      - db-prod
     ports:
-      - "127.0.0.1:8010:8000"
-    command: >
-      sh -c "alembic upgrade head
-      && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+      - "127.0.0.1:8012:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://gestmat:gestmat_prod_secret_2026@db-prod:5432/gestmat_prod
+      JWT_SECRET: prod-jwt-secret-gestmat-2026-ch
+      JWT_EXPIRE_MINUTES: "1440"
+      FRONTEND_BASE_URL: https://gestmat.swissworkingdev.ch
+      CORS_ORIGINS: https://gestmat.swissworkingdev.ch
+      UPLOAD_DIR: /app/uploads
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
     volumes:
-      - uploads:/app/uploads
+      - gm-uploads-prod:/app/uploads
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     networks:
-      - internal
+      - gm-net-prod
 
-  frontend:
+  frontend-prod:
     build:
       context: ./gestion-materiel-frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: https://api-gestion-materiel.swissworktogether.ch
-    container_name: gm-frontend
+        NEXT_PUBLIC_API_BASE_URL: https://api-gestmat.swissworkingdev.ch
+    image: gestion-materiel-frontend-prod
+    container_name: gm-frontend-prod
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3010:3000"
+      - "127.0.0.1:3012:3000"
     networks:
-      - internal
+      - gm-net-prod
 
 volumes:
-  pgdata:
-  uploads:
+  gm-pgdata-prod:
+  gm-uploads-prod:
 
 networks:
-  internal:
+  gm-net-prod:
