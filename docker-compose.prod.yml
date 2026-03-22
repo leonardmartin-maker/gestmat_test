@@ -1,3 +1,5 @@
+name: gestmat-prod
+
 services:
   db-prod:
     image: postgres:16
