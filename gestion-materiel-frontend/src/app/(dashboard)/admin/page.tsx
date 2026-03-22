@@ -45,14 +45,18 @@ function AdminContent() {
     try {
       await restoreAsset(id);
       fetch();
-    } catch {}
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur lors de la restauration");
+    }
   };
 
   const handleRestoreEmployee = async (id: number) => {
     try {
       await restoreEmployee(id);
       fetch();
-    } catch {}
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur lors de la restauration");
+    }
   };
 
   return (
