@@ -2,7 +2,7 @@ from datetime import date
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.common import Meta
 
@@ -43,6 +43,20 @@ class AssetCreate(BaseModel):
             return v or None
         return v
 
+    @field_validator("insurance_date", "inspection_date", "next_inspection_date", mode="before")
+    @classmethod
+    def empty_str_to_none_date(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+
+    @field_validator("km_current", "epi_category_id", mode="before")
+    @classmethod
+    def empty_str_to_none_int(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+
 
 class AssetUpdate(BaseModel):
     model_config = {"protected_namespaces": ()}
@@ -71,6 +85,20 @@ class AssetUpdate(BaseModel):
         if isinstance(v, str):
             v = v.strip()
             return v or None
+        return v
+
+    @field_validator("insurance_date", "inspection_date", "next_inspection_date", mode="before")
+    @classmethod
+    def empty_str_to_none_date(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+
+    @field_validator("km_current", "epi_category_id", mode="before")
+    @classmethod
+    def empty_str_to_none_int(cls, v):
+        if v == "" or v is None:
+            return None
         return v
 
 

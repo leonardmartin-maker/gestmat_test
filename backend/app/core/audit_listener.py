@@ -100,7 +100,7 @@ def audit_before_flush(session: Session, flush_context, instances) -> None:
         for attr in insp.mapper.column_attrs:
             hist = insp.attrs[attr.key].history
             if hist.has_changes() and hist.deleted:
-                before[attr.key] = hist.deleted[0]
+                before[attr.key] = _json_safe(hist.deleted[0])
 
         before = sanitize(entity_type, before)
         after = sanitize(entity_type, after)
