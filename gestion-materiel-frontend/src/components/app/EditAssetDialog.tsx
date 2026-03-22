@@ -20,7 +20,7 @@ import { Pencil } from "lucide-react";
 const schema = z.object({
   name: z.string().min(1),
   ref: z.string().optional().nullable(),
-  status: z.enum(["AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED"]),
+  status: z.enum(["AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED", "DESTROYED", "STOLEN"]),
   plate: z.string().optional().nullable(),
   km_current: z.coerce.number().int().nonnegative().optional().nullable(),
   insurance_date: z.string().optional().nullable(),
@@ -139,6 +139,8 @@ export function EditAssetDialog({
                   <SelectItem value="ASSIGNED">Attribué</SelectItem>
                   <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                   <SelectItem value="RETIRED">Retiré</SelectItem>
+                  <SelectItem value="DESTROYED">Détruit</SelectItem>
+                  <SelectItem value="STOLEN">Volé</SelectItem>
                 </SelectContent>
               </Select>
             </div>

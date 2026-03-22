@@ -92,13 +92,17 @@ def audit_before_flush(session: Session, flush_context, instances) -> None:
         insp = inspect(obj)
         entity_type = AUDITED_ENTITY_TYPES[t]
 
-        before = sanitize(entity_type, before)
-        # rollback "avant" propre : on lit l'historique de chaque attr
+        # Build "after" from current state
+        after = _serialize_model(obj)
+
+        # Build "before" from current state, then overlay historical values
+        before = dict(after)
         for attr in insp.mapper.column_attrs:
             hist = insp.attrs[attr.key].history
             if hist.has_changes() and hist.deleted:
                 before[attr.key] = hist.deleted[0]
 
+        before = sanitize(entity_type, before)
         after = sanitize(entity_type, after)
 
         action = "DELETE" if _is_deleted_action(obj) else "UPDATE"

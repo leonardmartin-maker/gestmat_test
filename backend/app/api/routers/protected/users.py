@@ -60,7 +60,7 @@ def list_users(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    q = db.query(User).filter(User.company_id == company_id)
+    q = db.query(User).filter(User.company_id == company_id, User.is_active.is_(True))
     total = q.count()
     users = q.order_by(User.id).offset(offset).limit(limit).all()
     has_more = offset + limit < total
@@ -205,6 +205,6 @@ def delete_user(
         emp.active = False
         emp.is_deleted = True
 
-    db.delete(user)
+    user.is_active = False
     db.commit()
     return {"ok": True}

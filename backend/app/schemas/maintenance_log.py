@@ -17,6 +17,7 @@ class MaintenanceLogOut(BaseModel):
     performer_name: str | None = None  # joined
     notes: str | None = None
     cost: float | None = None
+    document_path: str | None = None
     created_at: datetime | None = None
 
     class Config:

@@ -15,6 +15,7 @@ from app.models.event import Event
 from app.models.user import User
 from app.schemas.asset import AssetOut
 from app.schemas.event import AssignIn, ReturnIn
+from app.api.routers.public.scan import _check_employee_limits
 
 router = APIRouter()
 
@@ -49,17 +50,7 @@ def assign_asset(
     if asset.status == "ASSIGNED":
         raise HTTPException(status_code=400, detail="Asset déjà assigné")
 
-    last_event = (
-        db.query(Event)
-        .filter(Event.company_id == company_id, Event.asset_id == asset.id)
-        .order_by(desc(Event.occurred_at), desc(Event.id))
-        .first()
-    )
-    if last_event and last_event.event_type != "CHECK_IN":
-        raise HTTPException(
-            status_code=400,
-            detail="Attribution impossible: dernier événement n'est pas un CHECK_IN",
-        )
+    # Status-based checks above are sufficient (avoids issues with legacy event data)
 
     if payload.employee_id is not None:
         employee = (
@@ -90,6 +81,9 @@ def assign_asset(
     if not employee.active:
         raise HTTPException(status_code=400, detail="Employee inactif")
 
+    # Enforce limits: 1 vehicle at a time, 1 EPI per category
+    _check_employee_limits(db, employee, asset)
+
     asset.status = "ASSIGNED"
 
     evt = Event(
@@ -97,7 +91,7 @@ def assign_asset(
         asset_id=asset.id,
         employee_id=employee.id,
         user_id=current_user.id,
-        event_type="CHECK_OUT",
+        event_type="CHECK_IN",
         km_value=payload.km_value,
         notes=payload.notes,
     )
@@ -134,26 +128,32 @@ def return_asset(
     if asset.status == "MAINTENANCE":
         raise HTTPException(status_code=400, detail="Asset en maintenance")
 
-    last_event = (
+    if asset.status != "ASSIGNED":
+        raise HTTPException(
+            status_code=400,
+            detail="Retour impossible: ce matériel n'est pas pris actuellement",
+        )
+
+    # Find who took it (last CHECK_IN event) for the return event record
+    last_check_in = (
         db.query(Event)
-        .filter(Event.company_id == company_id, Event.asset_id == asset.id)
+        .filter(
+            Event.company_id == company_id,
+            Event.asset_id == asset.id,
+            Event.event_type == "CHECK_IN",
+        )
         .order_by(desc(Event.occurred_at), desc(Event.id))
         .first()
     )
-    if last_event is None or last_event.event_type != "CHECK_OUT":
-        raise HTTPException(
-            status_code=400,
-            detail="Retour impossible: aucun CHECK_OUT récent trouvé",
-        )
 
     asset.status = "AVAILABLE"
 
     evt = Event(
         company_id=company_id,
         asset_id=asset.id,
-        employee_id=last_event.employee_id,
+        employee_id=last_check_in.employee_id if last_check_in else None,
         user_id=current_user.id,
-        event_type="CHECK_IN",
+        event_type="CHECK_OUT",
         km_value=payload.km_value,
         notes=payload.notes,
     )

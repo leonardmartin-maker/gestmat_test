@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 import { listAssetsWithAssignee, type AssetOutWithAssignee } from "@/lib/api/assets";
+import { listEmployees, type EmployeeOut } from "@/lib/api/employees";
 import { exportAssetsCsv } from "@/lib/api/export";
 import { CreateAssetDialog } from "@/components/app/CreateAssetDialog";
 import { AssetDrawer } from "@/components/app/AssetDrawer";
@@ -57,6 +58,8 @@ export default function AssetsClient() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("ALL");
   const [category, setCategory] = useState<string>("ALL");
+  const [employeeFilter, setEmployeeFilter] = useState<string>("ALL");
+  const [employees, setEmployees] = useState<EmployeeOut[]>([]);
 
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -71,6 +74,15 @@ export default function AssetsClient() {
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Load employees for filter (admin/manager only)
+  useEffect(() => {
+    if (canWrite) {
+      listEmployees({ active: true, limit: 200 })
+        .then((res) => setEmployees(res.data))
+        .catch(() => {});
+    }
+  }, [canWrite]);
 
   // debounce search
   const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -128,10 +140,11 @@ export default function AssetsClient() {
       search: debouncedSearch.trim() ? debouncedSearch.trim() : undefined,
       status: status === "ALL" ? undefined : status,
       category: category === "ALL" ? undefined : category,
+      assigned_to_employee_id: employeeFilter !== "ALL" ? Number(employeeFilter) : undefined,
       limit,
       offset,
     };
-  }, [debouncedSearch, status, category, limit, offset]);
+  }, [debouncedSearch, status, category, employeeFilter, limit, offset]);
 
   useEffect(() => {
     setLoading(true);
@@ -239,8 +252,32 @@ export default function AssetsClient() {
                 <SelectItem value="ASSIGNED">Attribué</SelectItem>
                 <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                 <SelectItem value="RETIRED">Retiré</SelectItem>
+                <SelectItem value="DESTROYED">Détruit</SelectItem>
+                <SelectItem value="STOLEN">Volé</SelectItem>
               </SelectContent>
             </Select>
+
+            {canWrite && employees.length > 0 && (
+              <Select
+                value={employeeFilter}
+                onValueChange={(v) => {
+                  setOffset(0);
+                  setEmployeeFilter(v);
+                }}
+              >
+                <SelectTrigger className="w-[200px] rounded-xl">
+                  <SelectValue placeholder="Assigne a..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tous les employes</SelectItem>
+                  {employees.map((emp) => (
+                    <SelectItem key={emp.id} value={String(emp.id)}>
+                      {emp.first_name} {emp.last_name}{emp.employee_code ? ` (${emp.employee_code})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Select
               value={String(limit)}
@@ -342,9 +379,19 @@ export default function AssetsClient() {
                 }}
               />
             )}
+
+            {employeeFilter !== "ALL" && (
+              <FilterChip
+                label={`Employe: ${employees.find((e) => String(e.id) === employeeFilter)?.first_name ?? employeeFilter}`}
+                onClear={() => {
+                  setOffset(0);
+                  setEmployeeFilter("ALL");
+                }}
+              />
+            )}
           </div>
 
-          {(debouncedSearch.trim() || category !== "ALL" || status !== "ALL") && (
+          {(debouncedSearch.trim() || category !== "ALL" || status !== "ALL" || employeeFilter !== "ALL") && (
             <Button
               variant="outline"
               size="sm"
@@ -353,6 +400,7 @@ export default function AssetsClient() {
                 setSearch("");
                 setCategory("ALL");
                 setStatus("ALL");
+                setEmployeeFilter("ALL");
               }}
             >
               Réinitialiser
@@ -480,7 +528,7 @@ export default function AssetsClient() {
         </div>
       </div>
 
-      <AssetDrawer open={drawerOpen} onOpenChange={setDrawerOpen} assetId={selectedAssetId} />
+      <AssetDrawer open={drawerOpen} onOpenChange={setDrawerOpen} assetId={selectedAssetId} onDeleted={() => setReloadTick((t) => t + 1)} />
     </div>
   );
 }

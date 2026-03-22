@@ -27,6 +27,7 @@ export function CompleteMaintenanceDialog({
   const [kmAt, setKmAt] = useState(task.asset_km?.toString() || "");
   const [notes, setNotes] = useState("");
   const [cost, setCost] = useState("");
+  const [document, setDocument] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,6 +36,7 @@ export function CompleteMaintenanceDialog({
     setKmAt(task.asset_km?.toString() || "");
     setNotes("");
     setCost("");
+    setDocument(null);
     setError(null);
   };
 
@@ -54,6 +56,7 @@ export function CompleteMaintenanceDialog({
         km_at: kmAt ? parseInt(kmAt) : null,
         notes: notes.trim() || null,
         cost: cost ? parseFloat(cost) : null,
+        document: document,
       });
       setOpen(false);
       onCompleted();
@@ -141,6 +144,16 @@ export function CompleteMaintenanceDialog({
               onChange={(e) => setCost(e.target.value)}
               min={0}
               step={0.01}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Facture / fiche mecano</Label>
+            <Input
+              type="file"
+              className="rounded-xl text-sm"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              onChange={(e) => setDocument(e.target.files?.[0] || null)}
             />
           </div>
 

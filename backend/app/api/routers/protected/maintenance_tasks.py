@@ -1,8 +1,12 @@
+import secrets
+import shutil
 from datetime import date, timedelta
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.deps import get_company_id, get_current_user, get_db
 from app.core.permissions import require_manager_or_admin
 from app.models.asset import Asset
@@ -240,7 +244,11 @@ def generate_tasks(
 @write_router.post("/tasks/{task_id}/complete")
 def complete_task(
     task_id: int,
-    payload: MaintenanceTaskComplete,
+    performed_at: str = Form(...),
+    km_at: int | None = Form(None),
+    notes: str | None = Form(None),
+    cost: float | None = Form(None),
+    document: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     company_id: int = Depends(get_company_id),
     current_user: User = Depends(get_current_user),
@@ -254,33 +262,55 @@ def complete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Tâche introuvable")
 
+    # Parse performed_at date string
+    performed_date = date.fromisoformat(performed_at)
+
     # Create maintenance log
     log = MaintenanceLog(
         company_id=company_id,
         asset_id=task.asset_id,
         task_id=task.id,
         task_name=task.task_name,
-        performed_at=payload.performed_at,
-        km_at=payload.km_at,
+        performed_at=performed_date,
+        km_at=km_at,
         performed_by=current_user.id,
-        notes=payload.notes,
-        cost=payload.cost,
+        notes=notes,
+        cost=cost,
     )
+
+    # Handle document upload
+    if document and document.filename:
+        allowed = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
+        if document.content_type not in allowed:
+            raise HTTPException(400, "Format non supporte. PDF, JPG, PNG ou WebP uniquement.")
+
+        upload_dir = Path(settings.UPLOAD_DIR) / "maintenance" / str(company_id)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        ext = document.filename.split(".")[-1] if document.filename else "pdf"
+        filename = f"maint_{task_id}_{secrets.token_hex(4)}.{ext}"
+        file_path = upload_dir / filename
+
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(document.file, f)
+
+        log.document_path = f"maintenance/{company_id}/{filename}"
+
     db.add(log)
 
     # Update task: record completion and schedule next cycle
-    task.last_done_date = payload.performed_at
-    task.last_done_km = payload.km_at
+    task.last_done_date = performed_date
+    task.last_done_km = km_at
 
-    task.due_date = (payload.performed_at + timedelta(days=task.interval_days)) if task.interval_days else None
-    task.due_km = ((payload.km_at or 0) + task.interval_km) if task.interval_km else None
+    task.due_date = (performed_date + timedelta(days=task.interval_days)) if task.interval_days else None
+    task.due_km = ((km_at or 0) + task.interval_km) if task.interval_km else None
     task.status = "PENDING"
 
     # Update asset km if provided
     asset = db.query(Asset).filter(Asset.id == task.asset_id).first()
-    if asset and payload.km_at is not None:
-        if asset.km_current is None or payload.km_at > asset.km_current:
-            asset.km_current = payload.km_at
+    if asset and km_at is not None:
+        if asset.km_current is None or km_at > asset.km_current:
+            asset.km_current = km_at
 
     db.commit()
     return {"ok": True}

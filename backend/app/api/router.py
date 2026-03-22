@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import get_current_user
 
-from app.api.routers.public import auth, health, scan as public_scan
-from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs
+from app.api.routers.public import auth, health, scan as public_scan, stripe_webhook
+from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs, fuel_receipts, incidents, subscription
 
 api_router = APIRouter()
 
@@ -11,6 +11,7 @@ api_router = APIRouter()
 public_router = APIRouter()
 public_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 public_router.include_router(health.router, tags=["health"])
+public_router.include_router(stripe_webhook.router, tags=["stripe"])
 # public_scan moved to protected_router as employee-scan (auth required)
 
 # Protected (JWT requis)
@@ -78,6 +79,18 @@ protected_router.include_router(maintenance_logs.router, prefix="/maintenance/lo
 
 # Export CSV (MANAGER/ADMIN)
 protected_router.include_router(export.router, prefix="/export", tags=["export"])
+
+# Fuel receipts (upload: any, manage: manager/admin)
+protected_router.include_router(fuel_receipts.router, prefix="/fuel-receipts", tags=["fuel-receipts"])
+protected_router.include_router(fuel_receipts.write_router, prefix="/fuel-receipts", tags=["fuel-receipts"])
+
+# Incidents (declare: any, manage: manager/admin)
+protected_router.include_router(incidents.router, prefix="/incidents", tags=["incidents"])
+protected_router.include_router(incidents.write_router, prefix="/incidents", tags=["incidents"])
+
+# Subscription / billing
+protected_router.include_router(subscription.router, prefix="/subscription", tags=["subscription"])
+protected_router.include_router(subscription.admin_router, prefix="/subscription", tags=["subscription"])
 
 # Employee self-service scan (authenticated — any role)
 protected_router.include_router(public_scan.router, prefix="/employee-scan", tags=["employee-scan"])

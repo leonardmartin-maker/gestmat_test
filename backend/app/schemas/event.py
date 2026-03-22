@@ -23,6 +23,9 @@ class EventOut(BaseModel):
     notes: str | None
     damage_description: str | None = None
     photos: list[EventPhotoOut] = []
+    employee_name: str | None = None
+    employee_code: str | None = None
+    asset_name: str | None = None
 
     class Config:
         from_attributes = True

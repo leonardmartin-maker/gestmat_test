@@ -1,830 +1,364 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getDashboardSummary, type DashboardSummaryOut } from "@/lib/api/dashboard";
+import { listEvents, type EventOut } from "@/lib/api/events";
+import { listIncidents, type IncidentOut } from "@/lib/api/incidents";
+import { getTasksOverview, type MaintenanceTasksOverview } from "@/lib/api/maintenance-tasks";
+import { config } from "@/lib/config";
 
-import { KpiCard } from "@/components/app/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AssetDrawer } from "@/components/app/AssetDrawer";
 import {
   Package,
   UserCheck,
   CircleCheck,
-  Activity,
-  HeartPulse,
-  Zap,
-  ClipboardList,
-  BarChart3,
+  Wrench,
   AlertTriangle,
-  TrendingUp,
+  Car,
+  Fuel,
+  Activity,
   Users,
   RefreshCw,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Clock,
 } from "lucide-react";
-
-import { listEvents, type EventOut } from "@/lib/api/events";
-import { EventsHeatmap7d } from "@/components/app/EventsHeatmap7d";
-import { RecentEvents } from "@/components/app/RecentEvents";
-import { AssetDrawer } from "@/components/app/AssetDrawer";
-import { listAssetsWithAssignee, getAssetHistory, type AssetOutWithAssignee } from "@/lib/api/assets";
-import { AlertsPanel } from "@/components/app/AlertsPanel";
-
-// ✅ mini helper
-
-const MAINT_ALERT_DAYS = 7;
-
-function isMaintenanceEventType(t: string) {
-  const s = (t || "").toLowerCase();
-  // adapte si tes event_type sont différents (ex: "SET_MAINTENANCE", "MAINTENANCE", etc.)
-  return s.includes("maintenance");
-}
-
-function isAssignEventType(t: string) {
-  const s = (t || "").toLowerCase();
-  // adapte si besoin ("assign", "attribution", etc.)
-  return s.includes("assign") || s.includes("attrib");
-}
-
-function daysBetween(fromISO: string, to: Date) {
-  const a = new Date(fromISO);
-  const ms = to.getTime() - a.getTime();
-  return Math.floor(ms / (24 * 3600 * 1000));
-}
+import { http } from "@/lib/api/http";
+import { getSubscription, type SubscriptionResponse } from "@/lib/api/subscription";
+import { useAuth } from "@/lib/auth/auth-context";
 
 function pct(part: number, total: number) {
-  if (!total) return "0%";
-  const v = Math.round((part / total) * 100);
-  return `${v}%`;
-}
-
-type Health = {
-  score: number; // 0..100
-  label: string;
-  tone: "good" | "warn" | "bad";
-  notes: string[];
-};
-
-function computeHealth(d: DashboardSummaryOut, missingCount: number): Health {
-  const total = Math.max(1, d.total_assets);
-
-  // pénalités simples (tweakables)
-  const maintRate = d.maintenance_assets / total;
-  const retiredRate = d.retired_assets / total;
-  const missingRate = missingCount / total;
-
-  let score = 100;
-  score -= Math.round(maintRate * 45);   // maintenance pèse fort
-  score -= Math.round(missingRate * 35); // data quality importante
-  score -= Math.round(retiredRate * 15); // retrait léger
-
-  score = Math.max(0, Math.min(100, score));
-
-  let tone: Health["tone"] = "good";
-  if (score < 70) tone = "warn";
-  if (score < 45) tone = "bad";
-
-  const label =
-    tone === "good" ? "Parc sain" : tone === "warn" ? "À surveiller" : "Priorité";
-
-  const notes: string[] = [];
-  if (d.maintenance_assets > 0) notes.push(`${d.maintenance_assets} en maintenance`);
-  if (missingCount > 0) notes.push(`${missingCount} fiche(s) incomplète(s)`);
-  if (d.retired_assets > 0) notes.push(`${d.retired_assets} retiré(s)`);
-
-  if (notes.length === 0) notes.push("Aucune anomalie détectée");
-
-  return { score, label, tone, notes };
-}
-
-function toneClass(tone: Health["tone"]) {
-  if (tone === "good") return "border-emerald-200 bg-emerald-50/40";
-  if (tone === "warn") return "border-amber-200 bg-amber-50/40";
-  return "border-red-200 bg-red-50/40";
-}
-
-function toneText(tone: Health["tone"]) {
-  if (tone === "good") return "text-emerald-700";
-  if (tone === "warn") return "text-amber-700";
-  return "text-red-700";
-}
-
-function by<T>(arr: T[], key: (x: T) => string | number | null | undefined) {
-  const m = new Map<string, number>();
-  for (const x of arr) {
-    const k0 = key(x);
-    if (k0 === null || k0 === undefined) continue;
-    const k = String(k0);
-    m.set(k, (m.get(k) ?? 0) + 1);
-  }
-  return m;
-}
-
-function topN(map: Map<string, number>, n: number) {
-  return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
-}
-
-function availabilityRate(available: number, total: number) {
-  if (!total) return 0;
-  return Math.round((available / total) * 100);
+  if (!total) return "0";
+  return Math.round((part / total) * 100).toString();
 }
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardSummaryOut | null>(null);
   const [events, setEvents] = useState<EventOut[]>([]);
-  const [maintenanceAssets, setMaintenanceAssets] = useState<AssetOutWithAssignee[]>([]);
-  const [retiredAssets, setRetiredAssets] = useState<AssetOutWithAssignee[]>([]);
-  const [missingAssets, setMissingAssets] = useState<AssetOutWithAssignee[]>([]);
-
+  const [incidents, setIncidents] = useState<IncidentOut[]>([]);
+  const [maintenance, setMaintenance] = useState<MaintenanceTasksOverview | null>(null);
+  const [fuelPending, setFuelPending] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [allAssets, setAllAssets] = useState<AssetOutWithAssignee[]>([]);
-  
-  const [maintenanceAged, setMaintenanceAged] = useState<
-    { asset: AssetOutWithAssignee; enteredAt: string | null; days: number | null }[]
-  >([]);
+  const [subInfo, setSubInfo] = useState<SubscriptionResponse | null>(null);
+  const { isAdmin } = useAuth();
 
-  const [assignedWithoutEmployee, setAssignedWithoutEmployee] = useState<EventOut[]>([]);
-
-  // drawer
+  // Drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
-  const openAsset = (id: number) => {
-    setSelectedAssetId(id);
-    setDrawerOpen(true);
-  };
+  const openAsset = (id: number) => { setSelectedAssetId(id); setDrawerOpen(true); };
 
   const refresh = async () => {
     setLoading(true);
-    setErr(null);
-
     const now = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 6);
-    from.setHours(0, 0, 0, 0);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
 
     try {
-      const [d, ev, maint, ret, all] = await Promise.all([
+      const [d, ev, inc, maint, fuelRes] = await Promise.all([
         getDashboardSummary(),
-        listEvents({ from: from.toISOString(), to: now.toISOString(), limit: 200, offset: 0 }),
-        listAssetsWithAssignee({ status: "MAINTENANCE", limit: 50, offset: 0 }),
-        listAssetsWithAssignee({ status: "RETIRED", limit: 50, offset: 0 }),
-        listAssetsWithAssignee({ limit: 200, offset: 0 }),
+        listEvents({ from: weekAgo.toISOString(), to: now.toISOString(), limit: 10 }),
+        listIncidents({ limit: 10 }).catch(() => ({ data: [], meta: { total: 0 } })),
+        getTasksOverview().catch(() => null),
+        http.get("/fuel-receipts", { params: { status: "PENDING", limit: 1 } }).catch(() => ({ data: { meta: { total: 0 } } })),
       ]);
 
       setData(d);
+      setEvents(ev.data);
+      setIncidents(inc.data);
+      setMaintenance(maint);
+      setFuelPending((fuelRes.data as any)?.meta?.total ?? 0);
 
-      const sortedEvents = [...ev.data].sort(
-        (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
-      );
-      setEvents(sortedEvents);
-
-      setMaintenanceAssets(maint.data);
-      setRetiredAssets(ret.data);
-      setAllAssets(all.data);
-
-      const missing = all.data.filter((a) => {
-        const missingSerial = !a.serial_number;
-        const missingRef = !a.ref;
-        const missingEpiType = a.category === "EPI" && !a.epi_type;
-        const missingPlate = a.category === "VEHICLE" && !a.plate;
-        return missingSerial || missingRef || missingEpiType || missingPlate;
-      });
-      setMissingAssets(missing);
-      setLastRefresh(new Date());
-      // ✅ Ops: maintenance 오래 + assigned sans employee
-      // 1) Maintenance depuis X jours (via history)
-      const maintAged = await Promise.all(
-        maint.data.slice(0, 20).map(async (a) => {
-          try {
-            const hist = await getAssetHistory(a.id);
-            // hist.groups: [{date, events:[...]}]
-            const flat = hist.groups.flatMap((g) => g.events);
-            const maintEvents = flat
-              .filter((e) => isMaintenanceEventType(e.event_type))
-              .sort((x, y) => new Date(y.occurred_at).getTime() - new Date(x.occurred_at).getTime());
-            const enteredAt = maintEvents[0]?.occurred_at ?? null;
-            const days = enteredAt ? daysBetween(enteredAt, now) : null;
-            return { asset: a, enteredAt, days };
-          } catch {
-            return { asset: a, enteredAt: null as string | null, days: null as number | null };
-          }
-        })
-      );
-
-      setMaintenanceAged(
-        maintAged
-          .filter((x) => (x.days ?? 0) >= MAINT_ALERT_DAYS)
-          .sort((a, b) => (b.days ?? 0) - (a.days ?? 0))
-      );
-
-      // 2) ASSIGNED mais dernier event sans employee_id (sur fenêtre)
-      const latestByAsset = new Map<number, typeof sortedEvents[number]>();
-      for (const e of sortedEvents) {
-        if (!latestByAsset.has(e.asset_id)) latestByAsset.set(e.asset_id, e);
+      // Load subscription info (non-blocking)
+      if (isAdmin) {
+        getSubscription().then(setSubInfo).catch(() => {});
       }
-
-      const assignedNoEmployee = Array.from(latestByAsset.values()).filter(
-        (e) => isAssignEventType(e.event_type) && (e.employee_id === null || e.employee_id === undefined)
-      );
-
-      setAssignedWithoutEmployee(assignedNoEmployee);
-    } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || "Erreur");
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    refresh();
-  }, []);
+  useEffect(() => { refresh(); }, []);
 
-  const suspicious = useMemo(() => {
-    const now = Date.now();
-    const cutoff = now - 48 * 60 * 60 * 1000; // 48h
+  const [showIncidents, setShowIncidents] = useState(true);
+  const [showMovements, setShowMovements] = useState(true);
 
-    const byAsset: Record<number, { assetId: number; count: number; lastAt: number; employees: Set<number> }> = {};
-
-    for (const e of events) {
-      const t = new Date(e.occurred_at).getTime();
-      if (Number.isNaN(t) || t < cutoff) continue;
-
-      const a = (byAsset[e.asset_id] ??= {
-        assetId: e.asset_id,
-        count: 0,
-        lastAt: 0,
-        employees: new Set<number>(),
-      });
-
-      a.count += 1;
-      if (t > a.lastAt) a.lastAt = t;
-      if (e.employee_id) a.employees.add(e.employee_id);
-    }
-
-    // Règle simple: >= 3 mouvements / 48h OU >= 2 employés différents / 48h
-    const flagged = Object.values(byAsset)
-      .filter((x) => x.count >= 3 || x.employees.size >= 2)
-      .sort((a, b) => b.lastAt - a.lastAt);
-
-    const assetMap = new Map(allAssets.map((a) => [a.id, a]));
-
-    return flagged.map((x) => ({
-      ...x,
-      asset: assetMap.get(x.assetId),
-      employeesCount: x.employees.size,
-      lastAtIso: new Date(x.lastAt).toISOString(),
-    }));
-  }, [events, allAssets]);
-
-  const health = useMemo(() => {
-    if (!data) return null;
-    return computeHealth(data, missingAssets.length);
-  }, [data, missingAssets.length]);
-
-  const todo = useMemo(() => {
-    if (!data) return [];
-    const items: { title: string; desc: string; cta?: string; onClick?: () => void }[] = [];
-
-    if (data.maintenance_assets > 0) {
-      items.push({
-        title: "Vérifier les maintenances en cours",
-        desc: `${data.maintenance_assets} matériel(s) bloqué(s)`,
-        cta: "Voir",
-        onClick: () => {
-          const first = maintenanceAssets[0];
-          if (first) openAsset(first.id);
-        },
-      });
-    }
-
-    if (missingAssets.length > 0) {
-      items.push({
-        title: "Compléter les fiches incomplètes",
-        desc: `${missingAssets.length} matériel(s) avec données manquantes`,
-        cta: "Ouvrir le 1er",
-        onClick: () => {
-          const first = missingAssets[0];
-          if (first) openAsset(first.id);
-        },
-      });
-    }
-
-    if (data.retired_assets > 0) {
-      items.push({
-        title: "Nettoyer les matériels retirés",
-        desc: `${data.retired_assets} retiré(s) (archivage / contrôle)`,
-        cta: "Voir",
-        onClick: () => {
-          const first = retiredAssets[0];
-          if (first) openAsset(first.id);
-        },
-      });
-    }
-
-    if (items.length === 0) {
-      items.push({
-        title: "Aucune action urgente",
-        desc: "Le parc est propre. Tu peux te concentrer sur le suivi normal.",
-      });
-    }
-
-    return items;
-  }, [data, missingAssets, maintenanceAssets, retiredAssets]);
-
-  const ops = useMemo(() => {
-    // stats simples depuis dashboard summary
-    if (!data) {
-      return {
-        availablePct: 0,
-        assignedPct: 0,
-        maintPct: 0,
-        byCat: { VEHICLE: { total: 0, available: 0 }, EPI: { total: 0, available: 0 } },
-        topAssets: [] as { assetId: number; count: number }[],
-        topEmployees: [] as { employeeId: number; count: number }[],
-      };
-    }
-
-    const total = Math.max(1, data.total_assets);
-    const availablePct = availabilityRate(data.available_assets, total);
-    const assignedPct = availabilityRate(data.assigned_assets, total);
-    const maintPct = availabilityRate(data.maintenance_assets, total);
-
-    // par catégorie à partir de "all" (si dispo dans ta réponse listAssetsWithAssignee)
-    const byCat = {
-      VEHICLE: { total: 0, available: 0 },
-      EPI: { total: 0, available: 0 },
-    };
-
-    for (const a of missingAssets) {
-      // rien ici (juste pour montrer qu'on l'a sous la main)
-    }
-
-    // Si tu veux le breakdown par catégorie fiable → il faut la liste "all"
-    // Là on le fait via maintenance/retired/missing + total summary: approximatif.
-    // Option simple: on récupère all.data dans refresh() et on le stocke aussi.
-    // (si tu veux, je te donne le patch complet avec allAssets en state)
-  
-    // top assets et top employees depuis les events (7j)
-    // ⚠️ dépend de ton modèle EventOut: j'assume asset_id et employee_id existent.
-    const assetCounts = by(events, (e: any) => e.asset_id);
-    const empCounts = by(events, (e: any) => e.employee_id);
-
-    const topAssets = topN(assetCounts, 5)
-      .map(([k, v]) => ({ assetId: Number(k), count: v }))
-      .filter((x) => Number.isFinite(x.assetId));
-
-    const topEmployees = topN(empCounts, 5)
-      .map(([k, v]) => ({ employeeId: Number(k), count: v }))
-      .filter((x) => Number.isFinite(x.employeeId));
-
-    return { availablePct, assignedPct, maintPct, byCat, topAssets, topEmployees };
-  }, [data, events, missingAssets]);
+  const pendingIncidents = incidents.filter((i) => i.status === "PENDING").length;
+  const activeIncidents = incidents.filter((i) => i.status !== "RESOLVED").length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Bonjour ! 👋</h1>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Vue rapide — état du parc, activité et actions prioritaires
+            Vue d&apos;ensemble — parc, incidents, maintenance, carburant
           </p>
         </div>
         <Button variant="outline" className="rounded-xl gap-2" onClick={refresh} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "Chargement…" : "Rafraîchir"}
+          {loading ? "..." : "Rafraichir"}
         </Button>
       </div>
 
-      {err && (
-        <div className="rounded-md border p-3 text-sm text-red-600">
-          {String(err)}
-        </div>
+      {/* Trial banner */}
+      {subInfo?.subscription?.status === "TRIAL" && subInfo?.limits?.trial_ends_at && (
+        <Link href="/settings">
+          <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 flex items-start gap-3 hover:bg-blue-100 transition-colors">
+            <Clock className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-semibold text-blue-800 text-sm">Periode d&apos;essai</div>
+              <div className="text-sm text-blue-700">
+                Votre essai se termine le{" "}
+                <strong>{new Date(subInfo.limits.trial_ends_at).toLocaleDateString("fr-CH")}</strong>.
+                Cliquez ici pour choisir un plan.
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-blue-500 flex-shrink-0 mt-1" />
+          </div>
+        </Link>
       )}
 
-      {/* KPI */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* KPI Row */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {loading || !data ? (
-          <>
-            <Skeleton className="h-[92px] w-full" />
-            <Skeleton className="h-[92px] w-full" />
-            <Skeleton className="h-[92px] w-full" />
-            <Skeleton className="h-[92px] w-full" />
-          </>
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[100px] rounded-2xl" />)
         ) : (
           <>
-            <KpiCard label="Matériels (total)" value={data.total_assets} icon={Package} color="#6C5CE7" />
-            <KpiCard
-              label="Attribués"
-              value={data.assigned_assets}
-              hint={`(${pct(data.assigned_assets, data.total_assets)})`}
-              icon={UserCheck}
-              color="#74B9FF"
-            />
-            <KpiCard
-              label="Disponibles"
-              value={data.available_assets}
-              hint={`(${pct(data.available_assets, data.total_assets)})`}
-              icon={CircleCheck}
-              color="#00B894"
-            />
-            <KpiCard label="Événements (7j)" value={data.last_7_days_events} icon={Activity} color="#FDCB6E" />
+            <KpiCard icon={Package} label="Materiel total" value={data.total_assets} color="#6C5CE7" />
+            <KpiCard icon={UserCheck} label="Attribues" value={data.assigned_assets} sub={`${pct(data.assigned_assets, data.total_assets)}%`} color="#74B9FF" />
+            <KpiCard icon={CircleCheck} label="Disponibles" value={data.available_assets} sub={`${pct(data.available_assets, data.total_assets)}%`} color="#00B894" />
+            <KpiCard icon={Users} label="Employes actifs" value={data.active_employees} color="#6C5CE7" />
           </>
         )}
       </div>
 
-      {/* OPS TERRAIN */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 rounded-2xl shadow-sm border-0 card-hover">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-[#6C5CE7]" />
-              Ops terrain
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-3">
-            {loading || !data ? (
-              <>
-                <Skeleton className="h-[84px] w-full rounded-xl" />
-                <Skeleton className="h-[84px] w-full rounded-xl" />
-                <Skeleton className="h-[84px] w-full rounded-xl" />
-              </>
-            ) : (
-              <>
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
-                  <div className="text-xs text-emerald-600 font-medium">Disponibilité</div>
-                  <div className="text-2xl font-bold text-emerald-700">{ops.availablePct}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {data.available_assets} dispo / {data.total_assets} total
-                  </div>
-                </div>
+      {/* Urgent Alerts Row */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {/* Incidents pending */}
+        <Link href="/incidents" className="group">
+          <div className={`rounded-2xl border p-4 transition-all hover:shadow-md ${pendingIncidents > 0 ? "bg-red-50 border-red-200" : "bg-white"}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className={`h-4 w-4 ${pendingIncidents > 0 ? "text-red-500" : "text-gray-400"}`} />
+              <span className="text-xs font-medium text-muted-foreground">Incidents</span>
+            </div>
+            <div className={`text-2xl font-bold ${pendingIncidents > 0 ? "text-red-600" : "text-gray-900"}`}>
+              {activeIncidents}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {pendingIncidents > 0 ? `${pendingIncidents} en attente` : "Aucun actif"}
+            </div>
+          </div>
+        </Link>
 
-                <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-                  <div className="text-xs text-blue-600 font-medium">Attribués</div>
-                  <div className="text-2xl font-bold text-blue-700">{ops.assignedPct}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {data.assigned_assets} attribués
-                  </div>
-                </div>
+        {/* Maintenance overdue */}
+        <Link href="/maintenance" className="group">
+          <div className={`rounded-2xl border p-4 transition-all hover:shadow-md ${(maintenance?.total_overdue ?? 0) > 0 ? "bg-amber-50 border-amber-200" : "bg-white"}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Wrench className={`h-4 w-4 ${(maintenance?.total_overdue ?? 0) > 0 ? "text-amber-500" : "text-gray-400"}`} />
+              <span className="text-xs font-medium text-muted-foreground">Maintenance</span>
+            </div>
+            <div className={`text-2xl font-bold ${(maintenance?.total_overdue ?? 0) > 0 ? "text-amber-600" : "text-gray-900"}`}>
+              {maintenance?.total_overdue ?? 0}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              en retard{maintenance?.total_due ? ` \u2022 ${maintenance.total_due} bientot` : ""}
+            </div>
+          </div>
+        </Link>
 
-                <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
-                  <div className="text-xs text-amber-600 font-medium">Maintenance</div>
-                  <div className="text-2xl font-bold text-amber-700">{ops.maintPct}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {data.maintenance_assets} en maintenance
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Fuel pending */}
+        <Link href="/fuel-receipts" className="group">
+          <div className={`rounded-2xl border p-4 transition-all hover:shadow-md ${fuelPending > 0 ? "bg-orange-50 border-orange-200" : "bg-white"}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Fuel className={`h-4 w-4 ${fuelPending > 0 ? "text-orange-500" : "text-gray-400"}`} />
+              <span className="text-xs font-medium text-muted-foreground">Carburant</span>
+            </div>
+            <div className={`text-2xl font-bold ${fuelPending > 0 ? "text-orange-600" : "text-gray-900"}`}>
+              {fuelPending}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              tickets en attente
+            </div>
+          </div>
+        </Link>
 
-        <Card className="rounded-2xl shadow-sm border-0 card-hover">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="h-4 w-4 text-[#FDCB6E]" />
-              Raccourcis
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-2 flex-wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => {
-                const first = maintenanceAssets[0];
-                if (first) openAsset(first.id);
-              }}
-              disabled={maintenanceAssets.length === 0}
-            >
-              Traiter maintenance
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => {
-                const first = missingAssets[0];
-                if (first) openAsset(first.id);
-              }}
-              disabled={missingAssets.length === 0}
-            >
-              Corriger données
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => {
-                const first = retiredAssets[0];
-                if (first) openAsset(first.id);
-              }}
-              disabled={retiredAssets.length === 0}
-            >
-              Vérifier retirés
-            </Button>
-          </CardContent>
-        </Card>
+        {/* In maintenance */}
+        <Link href="/assets?status=MAINTENANCE" className="group">
+          <div className={`rounded-2xl border p-4 transition-all hover:shadow-md ${(data?.maintenance_assets ?? 0) > 0 ? "bg-purple-50 border-purple-200" : "bg-white"}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Car className={`h-4 w-4 ${(data?.maintenance_assets ?? 0) > 0 ? "text-purple-500" : "text-gray-400"}`} />
+              <span className="text-xs font-medium text-muted-foreground">En maintenance</span>
+            </div>
+            <div className={`text-2xl font-bold ${(data?.maintenance_assets ?? 0) > 0 ? "text-purple-600" : "text-gray-900"}`}>
+              {data?.maintenance_assets ?? 0}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              vehicule(s) immobilise(s)
+            </div>
+          </div>
+        </Link>
       </div>
 
-      {/* Row 1: Health + Quick actions */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className={`lg:col-span-1 rounded-2xl shadow-sm border-0 card-hover ${health ? toneClass(health.tone) : ""}`}>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <HeartPulse className="h-4 w-4 text-[#E17055]" />
-              Santé du parc
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loading || !data || !health ? (
-              <>
-                <Skeleton className="h-6 w-[40%] rounded-lg" />
-                <Skeleton className="h-4 w-[80%] rounded-lg" />
-                <Skeleton className="h-4 w-[70%] rounded-lg" />
-              </>
-            ) : (
-              <>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <div className={`text-sm font-medium ${toneText(health.tone)}`}>{health.label}</div>
-                    <div className="text-3xl font-bold">{health.score}</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">/ 100</div>
-                </div>
-
-                <div className="space-y-1">
-                  {health.notes.map((n, i) => (
-                    <div key={i} className="text-sm text-muted-foreground">
-                      • {n}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="rounded-xl border bg-background p-3">
-                  <div className="text-xs text-muted-foreground mb-2">Raccourcis</div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-xl"
-                      onClick={() => {
-                        const first = missingAssets[0];
-                        if (first) openAsset(first.id);
-                      }}
-                      disabled={missingAssets.length === 0}
-                    >
-                      Données manquantes ({missingAssets.length})
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-xl"
-                      onClick={() => {
-                        const first = maintenanceAssets[0];
-                        if (first) openAsset(first.id);
-                      }}
-                      disabled={maintenanceAssets.length === 0}
-                    >
-                      Maintenance ({maintenanceAssets.length})
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2 rounded-2xl shadow-sm border-0 card-hover">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-[#6C5CE7]" />
-              Actions prioritaires
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loading || !data ? (
-              <>
-                <Skeleton className="h-[64px] w-full rounded-xl" />
-                <Skeleton className="h-[64px] w-full rounded-xl" />
-                <Skeleton className="h-[64px] w-full rounded-xl" />
-              </>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {todo.map((t, idx) => (
-                  <div key={idx} className="rounded-xl border p-4 hover:shadow-sm transition-shadow">
-                    <div className="font-medium text-sm">{t.title}</div>
-                    <div className="text-sm text-muted-foreground mt-1">{t.desc}</div>
-                    {t.cta && t.onClick && (
-                      <div className="mt-3">
-                        <Button size="sm" variant="outline" className="rounded-xl gap-1" onClick={t.onClick}>
-                          {t.cta}
-                          <ArrowRight className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+      {/* Main content */}
+      <div className="space-y-4">
+          {/* Recent incidents */}
+          <Card className="rounded-2xl shadow-sm border-0">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={() => setShowIncidents(!showIncidents)} className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    Derniers incidents
+                  </CardTitle>
+                  {showIncidents ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+                <Link href="/incidents">
+                  <Button size="sm" variant="ghost" className="rounded-xl gap-1 text-xs">
+                    Voir tout <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 2: Alerts (right) + Activity (left) */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="rounded-2xl shadow-sm border-0 card-hover">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="h-4 w-4 text-[#6C5CE7]" />
-                Activité
-              </CardTitle>
             </CardHeader>
-            <CardContent>
+            {showIncidents && <CardContent>
               {loading ? (
-                <>
-                  <Skeleton className="h-5 w-[60%] rounded-lg" />
-                  <div className="mt-4 flex items-end gap-2">
-                    {Array.from({ length: 7 }).map((_, i) => (
-                      <Skeleton key={i} className="h-[72px] w-6 rounded-lg" />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <EventsHeatmap7d events={events} />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm border-0 card-hover">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-[#E17055]" />
-                Rotation suspecte (48h)
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-2">
-              {loading ? (
-                <>
-                  <Skeleton className="h-5 w-[70%] rounded-lg" />
-                  <Skeleton className="h-5 w-[60%] rounded-lg" />
-                  <Skeleton className="h-5 w-[65%] rounded-lg" />
-                </>
-              ) : suspicious.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  Aucun matériel anormalement sollicité.
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+                </div>
+              ) : incidents.filter((i) => i.status !== "RESOLVED").length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-6">
+                  Aucun incident actif
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {suspicious.slice(0, 6).map((x) => (
-                    <button
-                      key={x.assetId}
-                      type="button"
-                      onClick={() => openAsset(x.assetId)}
-                      className="w-full text-left rounded-xl border p-4 hover:bg-purple-50/50 hover:shadow-sm transition-all"
-                      title="Ouvrir le matériel"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm font-medium">
-                          {x.asset?.name ?? `Matériel #${x.assetId}`}
+                  {incidents.filter((i) => i.status !== "RESOLVED").slice(0, 5).map((inc) => (
+                    <Link key={inc.id} href="/incidents" className="block">
+                      <div className="rounded-xl border p-3 hover:bg-purple-50/30 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {inc.incident_type === "ACCIDENT" ? (
+                              <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                            ) : (
+                              <Wrench className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                            )}
+                            <span className="font-medium text-sm truncate">
+                              {inc.incident_type === "ACCIDENT" ? "Accident" : "Panne"}
+                              {inc.asset_name ? ` \u2014 ${inc.asset_name}` : ""}
+                            </span>
+                            <Badge variant="secondary" className={`text-xs flex-shrink-0 ${
+                              inc.status === "PENDING" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {inc.status === "PENDING" ? "En attente" : "En cours"}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {new Date(inc.created_at).toLocaleDateString("fr-CH")}
+                          </span>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {x.count} evt • {x.employeesCount} employé(s)
+                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
+                          <span>{inc.employee_name}</span>
+                          {inc.asset_plate && <span>{inc.asset_plate}</span>}
+                          {inc.has_third_party && (
+                            <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                              Partie adverse
+                            </Badge>
+                          )}
                         </div>
                       </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>}
+          </Card>
 
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Dernière activité: {new Date(x.lastAtIso).toLocaleString("fr-CH")}
-                        {x.asset?.assigned_to ? " • actuellement attribué" : ""}
+          {/* Recent events */}
+          <Card className="rounded-2xl shadow-sm border-0">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={() => setShowMovements(!showMovements)} className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-[#6C5CE7]" />
+                    Derniers mouvements
+                  </CardTitle>
+                  {showMovements ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+              </div>
+            </CardHeader>
+            {showMovements && <CardContent>
+              {loading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+                </div>
+              ) : events.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-6">Aucun mouvement recent</div>
+              ) : (
+                <div className="space-y-2">
+                  {events.slice(0, 8).map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => openAsset(ev.asset_id)}
+                      className="w-full text-left rounded-xl border p-3 hover:bg-purple-50/30 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge variant="secondary" className={`text-xs flex-shrink-0 ${
+                            ev.event_type === "CHECK_IN" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+                          }`}>
+                            {ev.event_type === "CHECK_IN" ? "Retour" : "Prise"}
+                          </Badge>
+                          <span className="text-sm font-medium truncate">
+                            {ev.asset_name ?? `#${ev.asset_id}`}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          {new Date(ev.occurred_at).toLocaleString("fr-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {ev.employee_name ?? ""}
+                        {ev.km_value != null && ` \u2022 ${ev.km_value.toLocaleString("fr-CH")} km`}
                       </div>
                     </button>
                   ))}
                 </div>
               )}
-            </CardContent>
+            </CardContent>}
           </Card>
-
-          <Card className="rounded-2xl shadow-sm border-0 card-hover">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="h-4 w-4 text-[#74B9FF]" />
-                Derniers mouvements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-[72px] w-full rounded-xl" />
-                  <Skeleton className="h-[72px] w-full rounded-xl" />
-                  <Skeleton className="h-[72px] w-full rounded-xl" />
-                </div>
-              ) : (
-                <RecentEvents events={events.slice(0, 6)} onOpenAsset={openAsset} />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm border-0 card-hover">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-[#00B894]" />
-                Matériels les plus sollicités (7j)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {loading ? (
-                <>
-                  <Skeleton className="h-5 w-[70%] rounded-lg" />
-                  <Skeleton className="h-5 w-[60%] rounded-lg" />
-                  <Skeleton className="h-5 w-[65%] rounded-lg" />
-                </>
-              ) : ops.topAssets.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Pas assez d’événements pour classer.</div>
-              ) : (
-                <div className="space-y-2">
-                  {ops.topAssets.map((x) => (
-                    <button
-                      key={x.assetId}
-                      type="button"
-                      className="w-full rounded-xl border p-4 text-left hover:bg-purple-50/50 hover:shadow-sm transition-all"
-                      onClick={() => openAsset(x.assetId)}
-                      title="Ouvrir la fiche"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Asset #{x.assetId}</div>
-                        <div className="text-xs text-muted-foreground">{x.count} evt</div>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        À surveiller (usure, affectations fréquentes)
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm border-0 card-hover">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4 text-[#6C5CE7]" />
-                Employés les plus actifs (7j)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {loading ? (
-                <>
-                  <Skeleton className="h-5 w-[70%] rounded-lg" />
-                  <Skeleton className="h-5 w-[60%] rounded-lg" />
-                  <Skeleton className="h-5 w-[65%] rounded-lg" />
-                </>
-              ) : ops.topEmployees.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  Pas assez d’événements.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {ops.topEmployees.map((x) => (
-                    <div
-                      key={x.employeeId}
-                      className="rounded-xl border p-4 hover:bg-purple-50/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">
-                          Employé #{x.employeeId}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {x.count} événements
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Activité élevée sur 7 jours
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <AlertsPanel
-          maintenance={maintenanceAssets}
-          retired={retiredAssets}
-          missing={missingAssets}
-          maintenanceAged={maintenanceAged}
-          assignedWithoutEmployee={assignedWithoutEmployee}
-          onOpenAsset={openAsset}
-        />
       </div>
 
       <AssetDrawer open={drawerOpen} onOpenChange={setDrawerOpen} assetId={selectedAssetId} />
+    </div>
+  );
+}
+
+// ─── Components ──────────────────────────────────────────────────────────────
+
+function KpiCard({ icon: Icon, label, value, sub, color }: {
+  icon: any; label: string; value: number; sub?: string; color: string;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+          <Icon className="h-4 w-4" style={{ color }} />
+        </div>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-2xl font-bold">{value}</span>
+        {sub && <span className="text-sm text-muted-foreground">{sub}</span>}
+      </div>
     </div>
   );
 }

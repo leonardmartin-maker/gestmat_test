@@ -9,8 +9,11 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_company_id, get_db
 from app.core.permissions import require_admin, require_manager_or_admin
 from app.core.security import hash_password
+from app.models.asset import Asset
 from app.models.employee import Employee
+from app.models.event import Event
 from app.models.user import User
+from app.schemas.asset import AssetOut
 from app.schemas.common import Meta
 from app.schemas.employee import (
     EmployeeCreate,
@@ -91,12 +94,70 @@ def get_employee(
     return emp
 
 
+@router.get("/{employee_id}/assets", response_model=list[AssetOut])
+def get_employee_assets(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    company_id: int = Depends(get_company_id),
+):
+    """Return assets currently assigned to this employee (status=ASSIGNED + last CHECK_IN by them)."""
+    emp = (
+        db.query(Employee)
+        .filter(
+            Employee.id == employee_id,
+            Employee.company_id == company_id,
+            Employee.is_deleted.is_(False),
+        )
+        .first()
+    )
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee introuvable")
+
+    # Find all ASSIGNED assets where the last CHECK_IN belongs to this employee
+    from sqlalchemy import desc, func
+
+    # Subquery: latest CHECK_IN event per asset
+    latest_checkin = (
+        db.query(
+            Event.asset_id,
+            func.max(Event.id).label("max_id"),
+        )
+        .filter(
+            Event.company_id == company_id,
+            Event.event_type == "CHECK_IN",
+        )
+        .group_by(Event.asset_id)
+        .subquery()
+    )
+
+    # Join to get the employee_id of that latest CHECK_IN
+    assets = (
+        db.query(Asset)
+        .join(latest_checkin, Asset.id == latest_checkin.c.asset_id)
+        .join(Event, Event.id == latest_checkin.c.max_id)
+        .filter(
+            Asset.company_id == company_id,
+            Asset.status == "ASSIGNED",
+            Asset.is_deleted.is_(False),
+            Event.employee_id == employee_id,
+        )
+        .order_by(Asset.name)
+        .all()
+    )
+
+    return assets
+
+
 @write_router.post("", response_model=EmployeeOut)
 def create_employee(
     payload: EmployeeCreate,
     db: Session = Depends(get_db),
     company_id: int = Depends(get_company_id),
 ):
+    # Quota check
+    from app.services.quota import check_employee_quota
+    check_employee_quota(db, company_id)
+
     email = payload.email.strip() if payload.email else None
 
     # Si email fourni, vérifier qu'il n'est pas déjà utilisé (User)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   scanAsset,
@@ -50,6 +50,8 @@ type Phase = "loading" | "loaded" | "submitting" | "success" | "error";
 
 export default function EmployeeAssetPage() {
   const { publicId } = useParams<{ publicId: string }>();
+  const searchParams = useSearchParams();
+  const fromScan = searchParams.get("scan") === "1";
   const { user } = useAuth();
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -65,6 +67,9 @@ export default function EmployeeAssetPage() {
   // Photos état (obligatoire)
   const [statePhotos, setStatePhotos] = useState<File[]>([]);
 
+  // Photo compteur KM (obligatoire pour véhicules)
+  const [kmPhoto, setKmPhoto] = useState<File[]>([]);
+
   // Signalement dommage (optionnel)
   const [reportDamage, setReportDamage] = useState(false);
   const [damageDescription, setDamageDescription] = useState("");
@@ -72,6 +77,7 @@ export default function EmployeeAssetPage() {
 
   // Stable callbacks for PhotoCapture (avoid re-renders resetting previews)
   const onStatePhotosChange = useCallback((files: File[]) => setStatePhotos(files), []);
+  const onKmPhotoChange = useCallback((files: File[]) => setKmPhoto(files), []);
   const onDamagePhotosChange = useCallback((files: File[]) => setDamagePhotos(files), []);
 
   // Fetch asset info
@@ -91,11 +97,14 @@ export default function EmployeeAssetPage() {
 
   // Validation
   const isVehicle = asset?.category === "VEHICLE";
-  const kmRequired = isVehicle; // KM obligatoire pour véhicules (prise ET retour)
+  const kmRequired = isVehicle;
+  const currentKm = asset?.km_current ?? 0;
+  const kmNum = kmValue.trim() !== "" ? Number(kmValue) : null;
   const photosValid = statePhotos.length >= 1;
-  const kmValid = !kmRequired || (kmValue.trim() !== "" && Number(kmValue) >= 0);
+  const kmValid = !kmRequired || (kmNum !== null && kmNum >= currentKm);
+  const kmPhotoValid = !isVehicle || kmPhoto.length >= 1;
   const damageValid = !reportDamage || damageDescription.trim().length > 0;
-  const formValid = employeeCode.trim() !== "" && photosValid && kmValid && damageValid;
+  const formValid = employeeCode.trim() !== "" && photosValid && kmValid && kmPhotoValid && damageValid;
 
   // Actions
   const handleTake = async () => {
@@ -111,6 +120,7 @@ export default function EmployeeAssetPage() {
         damage_description: reportDamage && damageDescription.trim() ? damageDescription.trim() : null,
         state_photos: statePhotos,
         damage_photos: reportDamage ? damagePhotos : [],
+        km_photo: isVehicle ? kmPhoto : [],
       });
       setSuccessMsg(result.message);
       setAsset(result.asset);
@@ -134,6 +144,7 @@ export default function EmployeeAssetPage() {
         damage_description: reportDamage && damageDescription.trim() ? damageDescription.trim() : null,
         state_photos: statePhotos,
         damage_photos: reportDamage ? damagePhotos : [],
+        km_photo: isVehicle ? kmPhoto : [],
       });
       setSuccessMsg(result.message);
       setAsset(result.asset);
@@ -192,7 +203,8 @@ export default function EmployeeAssetPage() {
   if (!asset) return null;
 
   const canTake = asset.status === "AVAILABLE";
-  const canReturn = asset.status === "ASSIGNED";
+  const canReturn = asset.status === "ASSIGNED" && fromScan;
+  const showReturnScanHint = asset.status === "ASSIGNED" && !fromScan;
   const locked = asset.status === "MAINTENANCE" || asset.status === "RETIRED";
 
   return (
@@ -236,6 +248,23 @@ export default function EmployeeAssetPage() {
         </div>
       )}
 
+      {/* ---- Return requires QR scan ---- */}
+      {showReturnScanHint && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 text-center space-y-3">
+          <ScanLine className="h-8 w-8 text-blue-500 mx-auto" />
+          <p className="text-sm text-blue-800 font-medium">
+            Pour retourner ce matériel, scannez le QR code collé dessus avec le scanner de l&apos;application.
+          </p>
+          <Link
+            href="/e"
+            className="inline-flex items-center gap-2 text-sm text-[#6C5CE7] hover:text-[#5A4BD1] font-medium transition-colors"
+          >
+            <ScanLine className="h-4 w-4" />
+            Ouvrir le scanner
+          </Link>
+        </div>
+      )}
+
       {/* ---- Action form ---- */}
       {(canTake || canReturn) && (
         <div className="rounded-2xl bg-white shadow-sm border p-5 space-y-4">
@@ -266,24 +295,42 @@ export default function EmployeeAssetPage() {
             )}
           </div>
 
-          {/* KM (vehicles — obligatoire) */}
+          {/* KM (vehicles — obligatoire, >= actuel) */}
           {isVehicle && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700">
-                Kilométrage *
+                Kilométrage * <span className="text-xs text-gray-400">(min. {currentKm.toLocaleString()} km)</span>
               </label>
               <input
                 type="number"
                 value={kmValue}
                 onChange={(e) => setKmValue(e.target.value)}
-                placeholder={asset.km_current != null ? String(asset.km_current) : "0"}
-                min={0}
+                placeholder={String(currentKm)}
+                min={currentKm}
                 className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/40 focus:border-[#6C5CE7] ${
-                  !kmValid && kmValue === "" ? "border-red-300" : "border-gray-300"
+                  !kmValid ? "border-red-300" : "border-gray-300"
                 }`}
               />
-              {!kmValid && kmValue === "" && (
+              {kmValue.trim() === "" && (
                 <p className="text-xs text-red-500">Le kilométrage est obligatoire pour les véhicules</p>
+              )}
+              {kmNum !== null && kmNum < currentKm && (
+                <p className="text-xs text-red-500">Le kilométrage ne peut pas être inférieur à {currentKm.toLocaleString()} km</p>
+              )}
+            </div>
+          )}
+
+          {/* Photo compteur KM (obligatoire véhicules) */}
+          {isVehicle && (
+            <div className="space-y-1.5">
+              <PhotoCapture
+                label="Photo compteur kilométrique"
+                maxPhotos={1}
+                required
+                onChange={onKmPhotoChange}
+              />
+              {kmPhoto.length === 0 && (
+                <p className="text-xs text-red-500">La photo du compteur est obligatoire</p>
               )}
             </div>
           )}

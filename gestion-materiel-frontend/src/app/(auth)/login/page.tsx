@@ -33,8 +33,10 @@ export default function LoginPage() {
     try {
       const data = await login(values.email, values.password);
       await loginWithToken(data.access_token);
+      // Fetch role to redirect accordingly
+      const me = await import("@/lib/api/me").then((m) => m.getMe());
       // Use window.location for full reload — ensures auth context + PWA work
-      window.location.href = "/dashboard";
+      window.location.href = me.role === "EMPLOYEE" ? "/e" : "/dashboard";
     } catch (e: any) {
       const msg =
         e?.response?.data?.detail ||
@@ -103,6 +105,15 @@ export default function LoginPage() {
                 </p>
               )}
             </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Pas encore de compte ?{" "}
+                <a href="/register" className="text-[#6C5CE7] font-medium hover:underline">
+                  Essai gratuit 14 jours
+                </a>
+              </p>
+            </div>
           </CardContent>
         </Card>
 

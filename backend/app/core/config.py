@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "no-reply@swissworktogether.ch"
 
+    # OpenAI (optional — for fuel receipt OCR)
+    OPENAI_API_KEY: str = ""
+
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_ignore_empty=True,

@@ -25,6 +25,7 @@ export type AssetOut = {
   serial_number: string | null;
   next_inspection_date: string | null;
   notes: string | null;
+  purchase_invoice_path: string | null;
 };
 
 export type AssetOutWithAssignee = AssetOut & {
@@ -46,6 +47,7 @@ export type ListAssetsParams = {
   search?: string;
   status?: string;
   category?: string;
+  assigned_to_employee_id?: number;
   limit?: number;
   offset?: number;
 };
@@ -60,6 +62,12 @@ export async function getAsset(assetId: number) {
   return res.data;
 }
 
+export type EventPhotoOut = {
+  id: number;
+  category: string; // STATE | DAMAGE
+  url: string;
+};
+
 export type EventOut = {
   id: number;
   event_type: string;
@@ -69,6 +77,10 @@ export type EventOut = {
   notes: string | null;
   employee_id: number | null;
   user_id: number | null;
+  damage_description: string | null;
+  photos: EventPhotoOut[];
+  employee_name: string | null;
+  employee_code: string | null;
 };
 
 export type EventGroup = { date: string; events: EventOut[] };
@@ -105,7 +117,7 @@ export type AssetUpdate = {
   category?: "VEHICLE" | "EPI";
   name?: string;
   ref?: string | null;
-  status?: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED";
+  status?: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE" | "RETIRED" | "DESTROYED" | "STOLEN";
   plate?: string | null;
   model_name?: string | null;
   km_current?: number | null;
@@ -156,4 +168,13 @@ export async function scanAsset(publicId: string) {
 export async function fetchQrCodeBlob(publicId: string): Promise<string> {
   const res = await http.get(`/scan/${publicId}/qr`, { responseType: "blob" });
   return URL.createObjectURL(res.data);
+}
+
+export async function uploadPurchaseInvoice(assetId: number, file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await http.post<{ ok: boolean; url: string }>(`/assets/${assetId}/purchase-invoice`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
 }

@@ -6,7 +6,9 @@ export type AdminAssetList = { data: AssetOutWithAssignee[]; meta: Meta };
 export type AdminEmployeeList = { data: EmployeeOut[]; meta: Meta };
 
 export async function listDeletedAssets(params: { limit?: number; offset?: number } = {}) {
-  const res = await http.get<AdminAssetList>("/admin/assets/with-assignee", { params });
+  const res = await http.get<AdminAssetList>("/admin/assets/with-assignee", {
+    params: { ...params, include_deleted: true },
+  });
   return res.data;
 }
 
@@ -21,7 +23,9 @@ export async function deleteAsset(id: number) {
 }
 
 export async function listAllEmployees(params: { limit?: number; offset?: number } = {}) {
-  const res = await http.get<AdminEmployeeList>("/admin/employees", { params });
+  const res = await http.get<AdminEmployeeList>("/admin/employees", {
+    params: { ...params, include_deleted: true },
+  });
   return res.data;
 }
 

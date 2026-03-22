@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.schemas.common import Meta
 
 AssetCategory = Literal["VEHICLE", "EPI"]
-AssetStatus = Literal["AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED"]
+AssetStatus = Literal["AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED", "DESTROYED", "STOLEN"]
 
 
 _TEXT_FIELDS = ("name", "ref", "plate", "epi_type", "serial_number", "notes")
@@ -95,6 +95,12 @@ class AssetOut(BaseModel):
     serial_number: str | None
     next_inspection_date: date | None = None
     notes: str | None = None
+
+    purchase_invoice_path: str | None = None
+    purchase_invoice_url: str | None = None
+
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
 
 
 class AssetList(BaseModel):

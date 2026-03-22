@@ -47,6 +47,7 @@ def get_asset_logs(
             performer_name=users_map.get(log.performed_by) if log.performed_by else None,
             notes=log.notes,
             cost=float(log.cost) if log.cost is not None else None,
+            document_path=log.document_path,
             created_at=log.created_at,
         )
         data.append(out)

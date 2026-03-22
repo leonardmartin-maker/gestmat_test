@@ -12,6 +12,7 @@ export type MaintenanceLogOut = {
   performer_name: string | null;
   notes: string | null;
   cost: number | null;
+  document_path: string | null;
   created_at: string | null;
 };
 

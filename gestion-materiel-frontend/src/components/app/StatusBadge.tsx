@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { CircleCheck, UserCheck, Wrench, Archive } from "lucide-react";
+import { CircleCheck, UserCheck, Wrench, Archive, Flame, ShieldAlert } from "lucide-react";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: typeof CircleCheck }> = {
   AVAILABLE: {
@@ -22,6 +22,16 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; icon: ty
     label: "Retiré",
     className: "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100",
     icon: Archive,
+  },
+  DESTROYED: {
+    label: "Détruit",
+    className: "bg-red-100 text-red-700 border-red-200 hover:bg-red-100",
+    icon: Flame,
+  },
+  STOLEN: {
+    label: "Volé",
+    className: "bg-red-900 text-white border-red-900 hover:bg-red-900",
+    icon: ShieldAlert,
   },
 };
 

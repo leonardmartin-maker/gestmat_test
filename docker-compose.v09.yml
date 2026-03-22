@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  db-v09:
+    image: postgres:16
+    container_name: gm-db-v09
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gestmat
+      POSTGRES_PASSWORD: gestmat_v09_secret
+      POSTGRES_DB: gestmat_v09
+    volumes:
+      - gm-pgdata-v09:/var/lib/postgresql/data
+    networks:
+      - gm-net-v09
+
+  api-v09:
+    build:
+      context: ./backend
+    image: gestion-materiel-api-v09
+    container_name: gm-api-v09
+    restart: unless-stopped
+    depends_on:
+      - db-v09
+    ports:
+      - "127.0.0.1:8011:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://gestmat:gestmat_v09_secret@db-v09:5432/gestmat_v09
+      JWT_SECRET: v09-jwt-secret-change-me-in-prod-2026
+      JWT_EXPIRE_MINUTES: "1440"
+      FRONTEND_BASE_URL: https://gestmat-v09.swissworkingdev.ch
+      CORS_ORIGINS: https://gestmat-v09.swissworkingdev.ch
+      UPLOAD_DIR: /app/uploads
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    volumes:
+      - gm-uploads-v09:/app/uploads
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    networks:
+      - gm-net-v09
+
+  frontend-v09:
+    build:
+      context: ./gestion-materiel-frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: https://api-gestmat-v09.swissworkingdev.ch
+    image: gestion-materiel-frontend-v09
+    container_name: gm-frontend-v09
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3011:3000"
+    networks:
+      - gm-net-v09
+
+volumes:
+  gm-pgdata-v09:
+  gm-uploads-v09:
+
+networks:
+  gm-net-v09:

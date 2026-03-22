@@ -1,5 +1,11 @@
 import { http } from "@/lib/api/http";
 
+export type EventPhotoOut = {
+  id: number;
+  category: string; // STATE | KM | DAMAGE
+  url: string;
+};
+
 export type EventOut = {
   id: number;
   company_id: number;
@@ -11,6 +17,11 @@ export type EventOut = {
   created_at: string; // ISO
   km_value: number | null;
   notes: string | null;
+  damage_description: string | null;
+  employee_name: string | null;
+  employee_code: string | null;
+  asset_name: string | null;
+  photos: EventPhotoOut[];
 };
 
 export type Meta = {

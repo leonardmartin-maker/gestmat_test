@@ -1,4 +1,4 @@
-from sqlalchemy import String, DateTime, func, ForeignKey
+from sqlalchemy import String, DateTime, Boolean, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base_class import Base
 
@@ -11,6 +11,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="ADMIN")  # ADMIN/MANAGER/EMPLOYEE
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true", index=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

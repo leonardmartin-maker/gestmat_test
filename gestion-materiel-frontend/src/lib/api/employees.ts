@@ -46,3 +46,10 @@ export async function getEmployee(id: number) {
   const res = await http.get<EmployeeOut>(`/employees/${id}`);
   return res.data;
 }
+
+import type { AssetOut } from "@/lib/api/assets";
+
+export async function getEmployeeAssets(employeeId: number) {
+  const res = await http.get<AssetOut[]>(`/employees/${employeeId}/assets`);
+  return res.data;
+}

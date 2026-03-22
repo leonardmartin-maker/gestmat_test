@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.schemas.common import Meta
 
@@ -40,6 +41,8 @@ class EmployeeOut(BaseModel):
     employee_code: str | None
     email: str | None
     active: bool
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
 
     class Config:
         from_attributes = True

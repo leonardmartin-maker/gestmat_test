@@ -59,8 +59,16 @@ export async function generateTasks(assetId: number) {
 }
 
 /** Marquer une tâche comme effectuée */
-export async function completeTask(taskId: number, payload: MaintenanceTaskComplete) {
-  const res = await http.post(`/maintenance/tasks/${taskId}/complete`, payload);
+export async function completeTask(taskId: number, payload: MaintenanceTaskComplete & { document?: File | null }) {
+  const fd = new FormData();
+  fd.append("performed_at", payload.performed_at);
+  if (payload.km_at != null) fd.append("km_at", String(payload.km_at));
+  if (payload.notes) fd.append("notes", payload.notes);
+  if (payload.cost != null) fd.append("cost", String(payload.cost));
+  if (payload.document) fd.append("document", payload.document);
+  const res = await http.post(`/maintenance/tasks/${taskId}/complete`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 }
 

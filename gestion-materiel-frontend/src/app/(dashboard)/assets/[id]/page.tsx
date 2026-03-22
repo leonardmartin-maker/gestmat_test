@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getAsset, getAssetHistory, fetchQrCodeBlob } from "@/lib/api/assets";
+import { getAsset, getAssetHistory, fetchQrCodeBlob, updateAsset, uploadPurchaseInvoice } from "@/lib/api/assets";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +11,7 @@ import { ReturnAssetDialog } from "@/components/app/ReturnAssetDialog";
 import { EditAssetDialog } from "@/components/app/EditAssetDialog";
 import { useAuth } from "@/lib/auth/auth-context";
 import { config } from "@/lib/config";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Event card with photos                                             */
@@ -26,14 +26,27 @@ function EventCard({ ev }: { ev: any }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   const statePhotos = (ev.photos ?? []).filter((p: any) => p.category === "STATE");
+  const kmPhotos = (ev.photos ?? []).filter((p: any) => p.category === "KM");
   const damagePhotos = (ev.photos ?? []).filter((p: any) => p.category === "DAMAGE");
 
   return (
     <>
       <div className="rounded-md border p-3 text-sm space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <div className="font-medium">{ev.event_type}</div>
-          <div className="text-muted-foreground">
+          <div>
+            <span className="font-medium">
+              {ev.event_type === "CHECK_IN" ? "Prise" : ev.event_type === "CHECK_OUT" ? "Retour" : ev.event_type}
+            </span>
+            {ev.employee_name && (
+              <span className="ml-2 text-muted-foreground">
+                par <span className="font-medium text-foreground">{ev.employee_name}</span>
+                {ev.employee_code && (
+                  <span className="text-xs text-muted-foreground ml-1">({ev.employee_code})</span>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="text-muted-foreground text-xs">
             {new Date(ev.occurred_at).toLocaleString()}
           </div>
         </div>
@@ -70,6 +83,25 @@ function EventCard({ ev }: { ev: any }) {
                   className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 hover:border-[#6C5CE7] transition-colors"
                 >
                   <img src={photoUrl(p.url)} alt="État" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* KM photos */}
+        {kmPhotos.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-blue-600 mb-1">Photo compteur KM</div>
+            <div className="flex flex-wrap gap-1.5">
+              {kmPhotos.map((p: any) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setLightbox(photoUrl(p.url))}
+                  className="w-14 h-14 rounded-lg overflow-hidden border border-blue-200 hover:border-blue-400 transition-colors"
+                >
+                  <img src={photoUrl(p.url)} alt="Compteur KM" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -172,6 +204,17 @@ export default function AssetDetailPage() {
   const isVehicle = asset.category === "VEHICLE";
   const isAssigned = asset.status === "ASSIGNED";
   const isAvailable = asset.status === "AVAILABLE";
+  const isMaintenance = asset.status === "MAINTENANCE";
+
+  const handleToggleMaintenance = async () => {
+    const newStatus = isMaintenance ? "AVAILABLE" : "MAINTENANCE";
+    try {
+      await updateAsset(assetId, { status: newStatus });
+      refresh();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -181,7 +224,13 @@ export default function AssetDetailPage() {
           <h1 className="text-xl font-semibold">{asset.name}</h1>
           <div className="mt-2 flex gap-2 flex-wrap">
             <Badge variant="secondary">{asset.category}</Badge>
-            <Badge variant="secondary">{asset.status}</Badge>
+            {asset.status === "DESTROYED" ? (
+              <Badge className="bg-red-600 text-white">DESTROYED</Badge>
+            ) : asset.status === "STOLEN" ? (
+              <Badge className="bg-red-900 text-white">STOLEN</Badge>
+            ) : (
+              <Badge variant="secondary">{asset.status}</Badge>
+            )}
             <Badge variant="outline">public_id: {asset.public_id}</Badge>
           </div>
         </div>
@@ -192,6 +241,18 @@ export default function AssetDetailPage() {
           )}
           {canWrite && isAssigned && (
             <ReturnAssetDialog publicId={asset.public_id} isVehicle={isVehicle} onDone={refresh} />
+          )}
+          {canWrite && (isAvailable || isAssigned) && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-amber-600 border-amber-300 hover:bg-amber-50" onClick={handleToggleMaintenance}>
+              <Wrench className="h-3.5 w-3.5" />
+              Maintenance
+            </Button>
+          )}
+          {canWrite && isMaintenance && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={handleToggleMaintenance}>
+              <Wrench className="h-3.5 w-3.5" />
+              Remettre disponible
+            </Button>
           )}
           <Button variant="outline" onClick={() => router.push("/assets")}>
             Retour
@@ -227,6 +288,48 @@ export default function AssetDetailPage() {
           {asset.notes && (
             <div className="text-sm text-muted-foreground">Notes: {asset.notes}</div>
           )}
+        </div>
+      </div>
+
+      {/* Facture d'achat */}
+      <div className="rounded-2xl border bg-white p-4 space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <FileText className="h-4 w-4 text-[#6C5CE7]" />
+          Facture d&apos;achat
+        </h3>
+        {asset.purchase_invoice_path ? (
+          <a
+            href={`${config.apiBaseUrl}/uploads/${asset.purchase_invoice_path}`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-2 text-sm text-[#6C5CE7] hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Voir la facture
+          </a>
+        ) : (
+          <p className="text-xs text-gray-400">Aucune facture</p>
+        )}
+        <div>
+          <label className="cursor-pointer inline-flex items-center gap-2 text-xs text-gray-500 hover:text-[#6C5CE7] bg-gray-50 border rounded-xl px-3 py-2">
+            <Upload className="h-3.5 w-3.5" />
+            {asset.purchase_invoice_path ? "Remplacer" : "Ajouter une facture"}
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  await uploadPurchaseInvoice(asset.id, file);
+                  refresh();
+                } catch {
+                  alert("Erreur upload");
+                }
+              }}
+            />
+          </label>
         </div>
       </div>
 

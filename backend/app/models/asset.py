@@ -12,7 +12,7 @@ class Asset(Base):
     category: Mapped[str] = mapped_column(String(20))  # VEHICLE / EPI
     name: Mapped[str] = mapped_column(String(200))
     ref: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    status: Mapped[str] = mapped_column(String(20), default="AVAILABLE")  # AVAILABLE/ASSIGNED/MAINTENANCE/RETIRED
+    status: Mapped[str] = mapped_column(String(20), default="AVAILABLE")  # AVAILABLE/ASSIGNED/MAINTENANCE/RETIRED/DESTROYED/STOLEN
 
     public_id: Mapped[str] = mapped_column(String(32), unique=True, index=True, default=lambda: secrets.token_hex(8))
 
@@ -31,6 +31,8 @@ class Asset(Base):
     next_inspection_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    purchase_invoice_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # ✅ Soft-delete
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", index=True)

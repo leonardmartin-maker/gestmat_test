@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Tag, Info, History, Clock, Wrench, Gauge } from "lucide-react";
+import { RefreshCw, Tag, Info, History, Clock, Wrench, Gauge, AlertTriangle, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-import { getAsset, getAssetHistory, type AssetHistoryOut, type AssetOut } from "@/lib/api/assets";
+import { getAsset, getAssetHistory, updateAsset, type AssetHistoryOut, type AssetOut } from "@/lib/api/assets";
+import { deleteAsset } from "@/lib/api/admin";
 import { listTasks, generateTasks, updateKm, type MaintenanceTaskOut } from "@/lib/api/maintenance-tasks";
 import { getAssetMaintenanceLogs, type MaintenanceLogOut } from "@/lib/api/maintenance-logs";
 import { EPI_PREDEFINED_ATTRIBUTES } from "@/lib/constants/epi-attributes";
@@ -17,6 +18,7 @@ import { AssignAssetDialog } from "@/components/app/AssignAssetDialog";
 import { ReturnAssetDialog } from "@/components/app/ReturnAssetDialog";
 import { CompleteMaintenanceDialog } from "@/components/app/CompleteMaintenanceDialog";
 import { useAuth } from "@/lib/auth/auth-context";
+import { config } from "@/lib/config";
 
 const ATTR_LABEL: Record<string, string> = Object.fromEntries(
   EPI_PREDEFINED_ATTRIBUTES.map((a) => [a.key, a.label])
@@ -26,9 +28,136 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   assetId: number | null;
+  onDeleted?: () => void;
 };
 
-export function AssetDrawer({ open, onOpenChange, assetId }: Props) {
+function DrawerEventCard({ ev, statePhotos, kmPhotos, damagePhotos }: { ev: any; statePhotos: any[]; kmPhotos: any[]; damagePhotos: any[] }) {
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const photoSrc = (p: any) => `${config.apiBaseUrl}${p.url}`;
+
+  return (
+    <>
+      <div className="rounded-xl border p-3 text-sm hover:bg-purple-50/30 transition-colors space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <span className="font-medium">
+              {ev.event_type === "CHECK_IN" ? "Prise" : ev.event_type === "CHECK_OUT" ? "Retour" : ev.event_type}
+            </span>
+            {ev.employee_name && (
+              <span className="ml-1.5 text-muted-foreground text-xs">
+                par <span className="font-medium text-foreground">{ev.employee_name}</span>
+                {ev.employee_code && (
+                  <span className="text-muted-foreground ml-1">({ev.employee_code})</span>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="text-muted-foreground text-xs">
+            {new Date(ev.occurred_at).toLocaleString()}
+          </div>
+        </div>
+        {(ev.km_value != null || ev.notes) && (
+          <div className="text-muted-foreground">
+            {ev.km_value != null ? `KM: ${ev.km_value}` : ""}
+            {ev.km_value != null && ev.notes ? " • " : ""}
+            {ev.notes ?? ""}
+          </div>
+        )}
+
+        {/* Damage report */}
+        {ev.damage_description && (
+          <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2">
+            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="text-xs font-semibold text-red-700">Dommage signalé</div>
+              <div className="text-xs text-red-600">{ev.damage_description}</div>
+            </div>
+          </div>
+        )}
+
+        {/* State photos */}
+        {statePhotos.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-1">Photos état</div>
+            <div className="flex flex-wrap gap-1.5">
+              {statePhotos.map((p: any) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setLightbox(photoSrc(p))}
+                  className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-[#6C5CE7] transition-colors"
+                >
+                  <img src={photoSrc(p)} alt="État" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* KM photos */}
+        {kmPhotos.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-blue-600 mb-1">Photo compteur KM</div>
+            <div className="flex flex-wrap gap-1.5">
+              {kmPhotos.map((p: any) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setLightbox(photoSrc(p))}
+                  className="w-12 h-12 rounded-lg overflow-hidden border border-blue-200 hover:border-blue-400 transition-colors"
+                >
+                  <img src={photoSrc(p)} alt="Compteur KM" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Damage photos */}
+        {damagePhotos.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-red-600 mb-1">Photos dommage</div>
+            <div className="flex flex-wrap gap-1.5">
+              {damagePhotos.map((p: any) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setLightbox(photoSrc(p))}
+                  className="w-12 h-12 rounded-lg overflow-hidden border border-red-200 hover:border-red-400 transition-colors"
+                >
+                  <img src={photoSrc(p)} alt="Dommage" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+          <img
+            src={lightbox}
+            alt="Photo agrandie"
+            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+export function AssetDrawer({ open, onOpenChange, assetId, onDeleted }: Props) {
   const { canWrite } = useAuth();
   const [asset, setAsset] = useState<AssetOut | null>(null);
   const [history, setHistory] = useState<AssetHistoryOut | null>(null);
@@ -43,6 +172,30 @@ export function AssetDrawer({ open, onOpenChange, assetId }: Props) {
   const isVehicle = asset?.category === "VEHICLE";
   const isAvailable = asset?.status === "AVAILABLE";
   const isAssigned = asset?.status === "ASSIGNED";
+  const isMaintenance = asset?.status === "MAINTENANCE";
+
+  const handleDelete = async () => {
+    if (!asset) return;
+    if (!confirm(`Supprimer le matériel "${asset.name}" ?\nCette action est réversible (soft delete).`)) return;
+    try {
+      await deleteAsset(asset.id);
+      onOpenChange(false);
+      onDeleted?.();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur lors de la suppression");
+    }
+  };
+
+  const handleToggleMaintenance = async () => {
+    if (!asset) return;
+    const newStatus = isMaintenance ? "AVAILABLE" : "MAINTENANCE";
+    try {
+      await updateAsset(asset.id, { status: newStatus });
+      refresh();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur");
+    }
+  };
 
   const title = useMemo(() => {
     if (!asset) return "Matériel";
@@ -156,6 +309,22 @@ export function AssetDrawer({ open, onOpenChange, assetId }: Props) {
                   {isAssigned && (
                     <ReturnAssetDialog publicId={asset.public_id} isVehicle={!!isVehicle} onDone={refresh} />
                   )}
+                  {(isAvailable || isAssigned) && (
+                    <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-amber-600 border-amber-300 hover:bg-amber-50" onClick={handleToggleMaintenance}>
+                      <Wrench className="h-3.5 w-3.5" />
+                      Mettre en maintenance
+                    </Button>
+                  )}
+                  {isMaintenance && (
+                    <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={handleToggleMaintenance}>
+                      <Wrench className="h-3.5 w-3.5" />
+                      Remettre disponible
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-red-600 border-red-300 hover:bg-red-50" onClick={handleDelete}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Supprimer
+                  </Button>
                 </div>
               )}
 
@@ -331,23 +500,20 @@ export function AssetDrawer({ open, onOpenChange, assetId }: Props) {
                           {g.date}
                         </div>
                         <div className="space-y-2">
-                          {g.events.map((ev) => (
-                            <div key={ev.id} className="rounded-xl border p-3 text-sm hover:bg-purple-50/30 transition-colors">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="font-medium">{ev.event_type}</div>
-                                <div className="text-muted-foreground text-xs">
-                                  {new Date(ev.occurred_at).toLocaleString()}
-                                </div>
-                              </div>
-                              {(ev.km_value != null || ev.notes) && (
-                                <div className="mt-2 text-muted-foreground">
-                                  {ev.km_value != null ? `KM: ${ev.km_value}` : ""}
-                                  {ev.km_value != null && ev.notes ? " • " : ""}
-                                  {ev.notes ?? ""}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                          {g.events.map((ev) => {
+                          const statePhotos = (ev.photos ?? []).filter((p: any) => p.category === "STATE");
+                          const kmPhotos = (ev.photos ?? []).filter((p: any) => p.category === "KM");
+                          const damagePhotos = (ev.photos ?? []).filter((p: any) => p.category === "DAMAGE");
+                          return (
+                            <DrawerEventCard
+                              key={ev.id}
+                              ev={ev}
+                              statePhotos={statePhotos}
+                              kmPhotos={kmPhotos}
+                              damagePhotos={damagePhotos}
+                            />
+                          );
+                        })}
                         </div>
                       </div>
                     ))}

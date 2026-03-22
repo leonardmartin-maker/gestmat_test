@@ -45,6 +45,7 @@ export interface TakeReturnPayload {
   damage_description?: string | null;
   state_photos: File[];
   damage_photos?: File[];
+  km_photo?: File[];
 }
 
 function buildFormData(payload: TakeReturnPayload): FormData {
@@ -61,6 +62,11 @@ function buildFormData(payload: TakeReturnPayload): FormData {
   if (payload.damage_photos) {
     for (const file of payload.damage_photos) {
       fd.append("damage_photos", file);
+    }
+  }
+  if (payload.km_photo) {
+    for (const file of payload.km_photo) {
+      fd.append("km_photo", file);
     }
   }
 
@@ -81,4 +87,41 @@ export async function returnAsset(payload: TakeReturnPayload): Promise<EmployeeA
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
+}
+
+// ---------- My Events (employee history) ----------
+
+export interface MyEventOut {
+  id: number;
+  event_type: string;
+  occurred_at: string;
+  asset_id: number;
+  asset_name: string;
+  km_value: number | null;
+  notes: string | null;
+  damage_description: string | null;
+  photos: PhotoOut[];
+}
+
+export async function listMyEvents(limit = 20): Promise<MyEventOut[]> {
+  const { data } = await http.get<{ data: MyEventOut[] }>("/employee-scan/my-events", {
+    params: { limit },
+  });
+  return data.data;
+}
+
+// ---------- Maintenance Alerts ----------
+
+export interface MaintenanceAlert {
+  id: number;
+  asset_name: string;
+  task_name: string;
+  due_type: "date" | "km";
+  due_value: string;
+  urgency: "warning" | "critical";
+}
+
+export async function getMaintenanceAlerts(): Promise<MaintenanceAlert[]> {
+  const { data } = await http.get<{ data: MaintenanceAlert[] }>("/employee-scan/maintenance-alerts");
+  return data.data;
 }
