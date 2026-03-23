@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAsset, getAssetHistory, fetchQrCodeBlob, updateAsset, uploadPurchaseInvoice } from "@/lib/api/assets";
+import { listEpiCategories, type EpiCategoryOut } from "@/lib/api/epi-categories";
+import { EPI_PREDEFINED_ATTRIBUTES } from "@/lib/constants/epi-attributes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +13,11 @@ import { ReturnAssetDialog } from "@/components/app/ReturnAssetDialog";
 import { EditAssetDialog } from "@/components/app/EditAssetDialog";
 import { useAuth } from "@/lib/auth/auth-context";
 import { config } from "@/lib/config";
-import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink } from "lucide-react";
+import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat } from "lucide-react";
+
+const ATTR_LABEL: Record<string, string> = Object.fromEntries(
+  EPI_PREDEFINED_ATTRIBUTES.map((a) => [a.key, a.label])
+);
 
 /* ------------------------------------------------------------------ */
 /*  Event card with photos                                             */
@@ -164,6 +170,7 @@ export default function AssetDetailPage() {
   const [history, setHistory] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [epiCategories, setEpiCategories] = useState<EpiCategoryOut[]>([]);
 
   const refresh = useCallback(() => {
     setErr(null);
@@ -177,6 +184,7 @@ export default function AssetDetailPage() {
 
   useEffect(() => {
     refresh();
+    listEpiCategories().then((res) => setEpiCategories(res.data)).catch(() => {});
   }, [refresh]);
 
   useEffect(() => {
@@ -281,8 +289,31 @@ export default function AssetDetailPage() {
             </>
           ) : (
             <>
-              <div className="text-sm text-muted-foreground">Type EPI: {asset.epi_type ?? "—"}</div>
+              {(() => {
+                const epiCat = epiCategories.find((c) => c.id === asset.epi_category_id);
+                return (
+                  <>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <HardHat className="h-3.5 w-3.5 text-[#6C5CE7]" />
+                      Catégorie: <span className="font-medium text-foreground">{epiCat ? `${epiCat.icon ?? ""} ${epiCat.name}`.trim() : asset.epi_type ?? "—"}</span>
+                    </div>
+                    {asset.epi_type && epiCat && asset.epi_type !== epiCat.name && (
+                      <div className="text-sm text-muted-foreground">Type: {asset.epi_type}</div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="text-sm text-muted-foreground">Prochaine inspection: {asset.next_inspection_date ?? "—"}</div>
+              {asset.epi_attributes && Object.keys(asset.epi_attributes).length > 0 && (
+                <div className="mt-2 rounded-lg bg-[#6C5CE7]/5 border border-[#6C5CE7]/20 p-2.5 space-y-1">
+                  <div className="text-xs font-medium text-[#6C5CE7] mb-1">Attributs</div>
+                  {Object.entries(asset.epi_attributes).map(([key, val]) => (
+                    <div key={key} className="text-sm text-muted-foreground">
+                      {ATTR_LABEL[key] || key}: <span className="font-medium text-foreground">{String(val)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
           {asset.notes && (
