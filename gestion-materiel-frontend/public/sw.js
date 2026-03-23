@@ -1,18 +1,18 @@
 // Service Worker for GestMat PWA
-// Enables: installability, deep linking, basic offline shell, update notifications
+// Enables: installability, deep linking, basic offline shell
 
-const CACHE_NAME = "gestmat-v9";
+const CACHE_NAME = "gestmat-v10";
 const SHELL_URLS = ["/e", "/e/fuel", "/login"];
 
-// Install: cache shell pages
+// Install: cache shell pages + activate immediately
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_URLS))
   );
-  // Do NOT skipWaiting — let the client control when to activate
+  self.skipWaiting();
 });
 
-// Activate: clean old caches, claim clients
+// Activate: clean old caches, claim clients immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -21,50 +21,23 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Listen for messages from the client
-self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
-});
-
-// Fetch: network-first for navigations, network-only for API
+// Fetch: network-first for everything (no stale cache)
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   if (request.method !== "GET") return;
   if (request.url.includes("/api/") || request.url.includes("/uploads/")) return;
 
-  // Navigation requests: network first, fallback to cache
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        // Cache successful responses for offline fallback
+        if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() => caches.match(request).then((r) => r || caches.match("/e")))
-    );
-    return;
-  }
-
-  // Static assets: stale-while-revalidate
-  if (
-    request.url.match(/\.(js|css|png|jpg|svg|woff2?)$/) ||
-    request.url.includes("/_next/")
-  ) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-        return cached || fetchPromise;
+        }
+        return response;
       })
-    );
-  }
+      .catch(() => caches.match(request).then((r) => r || caches.match("/e")))
+  );
 });

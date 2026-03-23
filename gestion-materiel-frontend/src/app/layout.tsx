@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                var APP_VERSION = 'v9';
+                var APP_VERSION = 'v10';
                 var storedVersion = localStorage.getItem('gestmat-version');
 
                 if (storedVersion !== APP_VERSION && 'serviceWorker' in navigator) {
