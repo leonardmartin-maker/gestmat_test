@@ -13,7 +13,7 @@ import { ReturnAssetDialog } from "@/components/app/ReturnAssetDialog";
 import { EditAssetDialog } from "@/components/app/EditAssetDialog";
 import { useAuth } from "@/lib/auth/auth-context";
 import { config } from "@/lib/config";
-import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat } from "lucide-react";
+import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat, User } from "lucide-react";
 
 const ATTR_LABEL: Record<string, string> = Object.fromEntries(
   EPI_PREDEFINED_ATTRIBUTES.map((a) => [a.key, a.label])
@@ -267,6 +267,30 @@ export default function AssetDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* Attribué à */}
+      {isAssigned && history?.groups && (() => {
+        // Trouver le dernier CHECK_IN dans l'historique
+        for (const g of history.groups) {
+          for (const ev of g.events) {
+            if (ev.event_type === "CHECK_IN" && ev.employee_name) {
+              return (
+                <div className="rounded-2xl border bg-blue-50/50 p-4 flex items-center gap-3">
+                  <User className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <div className="text-sm font-medium text-blue-900">Attribué à</div>
+                    <div className="text-sm text-blue-700">
+                      {ev.employee_name}
+                      {ev.employee_code && <span className="text-xs text-blue-500 ml-1">({ev.employee_code})</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+          }
+        }
+        return null;
+      })()}
 
       <Separator />
 

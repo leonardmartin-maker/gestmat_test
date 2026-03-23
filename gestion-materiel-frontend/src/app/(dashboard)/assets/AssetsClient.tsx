@@ -20,7 +20,7 @@ import Link from "next/link";
 
 function assigneeLabel(a: AssetOutWithAssignee) {
   const asg = a.assigned_to;
-  if (!asg) return "—";
+  if (!asg) return a.status === "ASSIGNED" ? "Attribué" : "—";
   const name = [asg.first_name, asg.last_name].filter(Boolean).join(" ").trim();
   const code = asg.employee_code ? ` (${asg.employee_code})` : "";
   return (name || `#${asg.employee_id}`) + code;
