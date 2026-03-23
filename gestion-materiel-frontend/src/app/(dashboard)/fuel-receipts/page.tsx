@@ -246,7 +246,15 @@ export default function FuelReceiptsPage() {
                     <div className="text-xs text-gray-400">
                       {new Date(r.receipt_date).toLocaleDateString("fr-CH")}
                       {r.liters != null && ` — ${r.liters.toFixed(1)} L`}
+                      {r.tva_amount != null && ` — TVA ${r.tva_amount.toFixed(2)} CHF`}
                     </div>
+                    {(r.station_address || r.tva_number) && (
+                      <div className="text-xs text-gray-400">
+                        {r.station_address && <span>📍 {r.station_address}</span>}
+                        {r.station_address && r.tva_number && " — "}
+                        {r.tva_number && <span>TVA: {r.tva_number}</span>}
+                      </div>
+                    )}
                     {r.notes && <div className="text-xs text-gray-500 bg-gray-50 rounded p-1.5">{r.notes}</div>}
                   </div>
                 </div>

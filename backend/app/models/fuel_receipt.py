@@ -14,6 +14,9 @@ class FuelReceipt(Base):
     photo_path: Mapped[str] = mapped_column(String(500))
     amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     liters: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    tva_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    tva_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    station_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     receipt_date: Mapped[Date] = mapped_column(Date, nullable=False)
 
     # PENDING / APPROVED / REJECTED

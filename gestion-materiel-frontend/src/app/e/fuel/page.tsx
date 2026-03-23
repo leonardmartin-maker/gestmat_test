@@ -85,6 +85,9 @@ export default function FuelReceiptPage() {
   const [ocrPreview, setOcrPreview] = useState<OcrPreview | null>(null);
   const [ocrAmount, setOcrAmount] = useState("");
   const [ocrLiters, setOcrLiters] = useState("");
+  const [ocrTva, setOcrTva] = useState("");
+  const [ocrTvaNumber, setOcrTvaNumber] = useState("");
+  const [ocrStation, setOcrStation] = useState("");
   const [ocrDate, setOcrDate] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -145,6 +148,9 @@ export default function FuelReceiptPage() {
       setOcrPreview(result);
       setOcrAmount(result.amount != null ? String(result.amount) : "");
       setOcrLiters(result.liters != null ? String(result.liters) : "");
+      setOcrTva(result.tva_amount != null ? String(result.tva_amount) : "");
+      setOcrTvaNumber(result.tva_number || "");
+      setOcrStation(result.station_address || "");
       setOcrDate(result.date || new Date().toISOString().split("T")[0]);
     } catch (err: any) {
       setErrorMsg(err?.response?.data?.detail || "Erreur lors de l'analyse OCR");
@@ -164,6 +170,9 @@ export default function FuelReceiptPage() {
         receipt_date: ocrDate,
         amount: ocrAmount ? Number(ocrAmount) : null,
         liters: ocrLiters ? Number(ocrLiters) : null,
+        tva_amount: ocrTva ? Number(ocrTva) : null,
+        tva_number: ocrTvaNumber.trim() || null,
+        station_address: ocrStation.trim() || null,
         notes: notes.trim() || null,
         photo_path: ocrPreview.photo_path,
       });
@@ -187,6 +196,9 @@ export default function FuelReceiptPage() {
     setEditedPhoto(null);
     setOcrAmount("");
     setOcrLiters("");
+    setOcrTva("");
+    setOcrTvaNumber("");
+    setOcrStation("");
     setOcrDate("");
     setNotes("");
     setPhoto(null);
@@ -442,7 +454,7 @@ export default function FuelReceiptPage() {
                 {/* Amount & Liters */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-gray-700">Montant CHF *</label>
+                    <label className="text-sm font-medium text-gray-700">Montant TTC *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -463,6 +475,43 @@ export default function FuelReceiptPage() {
                       className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/40 focus:border-[#6C5CE7]"
                     />
                   </div>
+                </div>
+
+                {/* TVA */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">TVA CHF</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={ocrTva}
+                      onChange={(e) => setOcrTva(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/40 focus:border-[#6C5CE7]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">N° TVA</label>
+                    <input
+                      type="text"
+                      value={ocrTvaNumber}
+                      onChange={(e) => setOcrTvaNumber(e.target.value)}
+                      placeholder="CHE-xxx.xxx.xxx"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/40 focus:border-[#6C5CE7]"
+                    />
+                  </div>
+                </div>
+
+                {/* Station address */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">Station-service</label>
+                  <input
+                    type="text"
+                    value={ocrStation}
+                    onChange={(e) => setOcrStation(e.target.value)}
+                    placeholder="Adresse de la station"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/40 focus:border-[#6C5CE7]"
+                  />
                 </div>
 
                 {/* Notes */}
@@ -545,7 +594,11 @@ export default function FuelReceiptPage() {
                         <div className="text-xs text-gray-500">
                           {r.asset_name} — {new Date(r.receipt_date).toLocaleDateString("fr-CH")}
                           {r.liters != null && ` — ${r.liters.toFixed(1)} L`}
+                          {r.tva_amount != null && ` — TVA ${r.tva_amount.toFixed(2)}`}
                         </div>
+                        {r.station_address && (
+                          <div className="text-[10px] text-gray-400 truncate">📍 {r.station_address}</div>
+                        )}
                       </div>
                     </div>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium flex-shrink-0 ${s.color}`}>

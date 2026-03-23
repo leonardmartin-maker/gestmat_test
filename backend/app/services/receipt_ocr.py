@@ -16,6 +16,9 @@ class OcrResult:
     amount: float | None = None
     liters: float | None = None
     date: str | None = None  # YYYY-MM-DD
+    tva_amount: float | None = None
+    tva_number: str | None = None
+    station_address: str | None = None
     raw_text: str | None = None
     error: str | None = None
 
@@ -51,9 +54,14 @@ def extract_receipt_data(photo_abs_path: str) -> OcrResult:
                             "text": (
                                 "Analyse ce ticket de carburant/essence. "
                                 "Extrais les informations suivantes et retourne UNIQUEMENT du JSON valide sans markdown :\n"
-                                '{"amount": <montant total en CHF ou EUR, nombre décimal ou null>, '
-                                '"liters": <nombre de litres, nombre décimal ou null>, '
-                                '"date": "<date au format YYYY-MM-DD ou null>"}\n'
+                                "{\n"
+                                '  "amount": <montant total TTC en CHF ou EUR, nombre décimal ou null>,\n'
+                                '  "liters": <nombre de litres, nombre décimal ou null>,\n'
+                                '  "date": "<date au format YYYY-MM-DD ou null>",\n'
+                                '  "tva_amount": <montant de la TVA en CHF ou EUR, nombre décimal ou null>,\n'
+                                '  "tva_number": "<numéro de TVA de la station (format CHE-xxx.xxx.xxx ou similaire) ou null>",\n'
+                                '  "station_address": "<adresse complète de la station-service ou null>"\n'
+                                "}\n"
                                 "Si tu ne peux pas extraire une valeur, mets null."
                             ),
                         },
@@ -67,7 +75,7 @@ def extract_receipt_data(photo_abs_path: str) -> OcrResult:
                     ],
                 }
             ],
-            max_tokens=200,
+            max_tokens=400,
             temperature=0,
         )
 
@@ -85,6 +93,9 @@ def extract_receipt_data(photo_abs_path: str) -> OcrResult:
             amount=float(data["amount"]) if data.get("amount") is not None else None,
             liters=float(data["liters"]) if data.get("liters") is not None else None,
             date=data.get("date"),
+            tva_amount=float(data["tva_amount"]) if data.get("tva_amount") is not None else None,
+            tva_number=data.get("tva_number") or None,
+            station_address=data.get("station_address") or None,
             raw_text=raw,
         )
 

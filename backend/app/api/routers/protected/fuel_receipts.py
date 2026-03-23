@@ -71,6 +71,9 @@ def _receipt_to_dict(r: FuelReceipt, asset_name: str = "", employee_name: str = 
         "photo_url": f"/uploads/{r.photo_path}",
         "amount": float(r.amount) if r.amount is not None else None,
         "liters": float(r.liters) if r.liters is not None else None,
+        "tva_amount": float(r.tva_amount) if r.tva_amount is not None else None,
+        "tva_number": r.tva_number,
+        "station_address": r.station_address,
         "receipt_date": r.receipt_date.isoformat() if r.receipt_date else None,
         "status": r.status,
         "notes": r.notes,
@@ -99,6 +102,9 @@ async def analyze_fuel_receipt(
         "amount": ocr_result.amount,
         "liters": ocr_result.liters,
         "date": ocr_result.date,
+        "tva_amount": ocr_result.tva_amount,
+        "tva_number": ocr_result.tva_number,
+        "station_address": ocr_result.station_address,
         "error": ocr_result.error,
     }
 
@@ -115,6 +121,9 @@ async def upload_fuel_receipt(
     receipt_date: str = Form(...),  # YYYY-MM-DD
     amount: Optional[float] = Form(None),
     liters: Optional[float] = Form(None),
+    tva_amount: Optional[float] = Form(None),
+    tva_number: Optional[str] = Form(None),
+    station_address: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     photo: UploadFile = File(None),
     photo_path: Optional[str] = Form(None),  # If already analyzed
@@ -187,6 +196,9 @@ async def upload_fuel_receipt(
         photo_path=rel_path,
         amount=amount,
         liters=liters,
+        tva_amount=tva_amount,
+        tva_number=tva_number.strip() if tva_number else None,
+        station_address=station_address.strip() if station_address else None,
         receipt_date=parsed_date,
         status="PENDING",
         ocr_raw_text=ocr_raw,

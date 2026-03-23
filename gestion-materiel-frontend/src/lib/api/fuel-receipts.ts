@@ -11,6 +11,9 @@ export interface FuelReceiptOut {
   photo_url: string;
   amount: number | null;
   liters: number | null;
+  tva_amount: number | null;
+  tva_number: string | null;
+  station_address: string | null;
   receipt_date: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   notes: string | null;
@@ -39,6 +42,9 @@ export interface OcrPreview {
   photo_url: string;
   amount: number | null;
   liters: number | null;
+  tva_amount: number | null;
+  tva_number: string | null;
+  station_address: string | null;
   date: string | null;
   error: string | null;
 }
@@ -57,6 +63,9 @@ export async function uploadFuelReceipt(payload: {
   receipt_date: string;
   amount?: number | null;
   liters?: number | null;
+  tva_amount?: number | null;
+  tva_number?: string | null;
+  station_address?: string | null;
   notes?: string | null;
   photo?: File;
   photo_path?: string;
@@ -66,6 +75,9 @@ export async function uploadFuelReceipt(payload: {
   fd.append("receipt_date", payload.receipt_date);
   if (payload.amount != null) fd.append("amount", String(payload.amount));
   if (payload.liters != null) fd.append("liters", String(payload.liters));
+  if (payload.tva_amount != null) fd.append("tva_amount", String(payload.tva_amount));
+  if (payload.tva_number) fd.append("tva_number", payload.tva_number);
+  if (payload.station_address) fd.append("station_address", payload.station_address);
   if (payload.notes) fd.append("notes", payload.notes);
   if (payload.photo_path) fd.append("photo_path", payload.photo_path);
   if (payload.photo) fd.append("photo", payload.photo);
