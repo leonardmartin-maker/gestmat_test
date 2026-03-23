@@ -1,8 +1,11 @@
 """Authenticated employee self-service scan endpoints (with photo upload)."""
 
+import logging
 import uuid
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger("teltonika")
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from PIL import Image
@@ -473,6 +476,23 @@ async def employee_take(
     db.commit()
     db.refresh(asset)
 
+    # GPS relay: de-immobilize vehicle so it can start
+    if asset.category == "VEHICLE":
+        try:
+            from app.models.gps_device import GpsDevice
+            from app.services.teltonika import de_immobilize
+            gps = db.query(GpsDevice).filter(GpsDevice.asset_id == asset.id).first()
+            if gps and gps.is_online:
+                ok = await de_immobilize(gps.imei)
+                if ok:
+                    gps.relay_state = "OFF"
+                    db.commit()
+                    logger.info(f"De-immobilized {gps.imei} for asset {asset.id}")
+                else:
+                    logger.warning(f"Failed to de-immobilize {gps.imei}")
+        except Exception as e:
+            logger.error(f"Relay de-immobilize error: {e}")
+
     return PublicActionResult(
         success=True,
         message=f"{asset.name} pris par {employee.first_name} {employee.last_name}",
@@ -585,6 +605,23 @@ async def employee_return(
 
     db.commit()
     db.refresh(asset)
+
+    # GPS relay: immobilize vehicle after return
+    if asset.category == "VEHICLE":
+        try:
+            from app.models.gps_device import GpsDevice
+            from app.services.teltonika import immobilize
+            gps = db.query(GpsDevice).filter(GpsDevice.asset_id == asset.id).first()
+            if gps and gps.is_online:
+                ok = await immobilize(gps.imei)
+                if ok:
+                    gps.relay_state = "ON"
+                    db.commit()
+                    logger.info(f"Immobilized {gps.imei} for asset {asset.id}")
+                else:
+                    logger.warning(f"Failed to immobilize {gps.imei}")
+        except Exception as e:
+            logger.error(f"Relay immobilize error: {e}")
 
     return PublicActionResult(
         success=True,

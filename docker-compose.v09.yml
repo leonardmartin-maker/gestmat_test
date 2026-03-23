@@ -24,6 +24,7 @@ services:
       - db-v09
     ports:
       - "127.0.0.1:8011:8000"
+      - "0.0.0.0:5027:5027"
     environment:
       DATABASE_URL: postgresql+psycopg://gestmat:gestmat_v09_secret@db-v09:5432/gestmat_v09
       JWT_SECRET: v09-jwt-secret-change-me-in-prod-2026
@@ -32,6 +33,9 @@ services:
       CORS_ORIGINS: https://gestmat-v09.swissworkingdev.ch
       UPLOAD_DIR: /app/uploads
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      TELTONIKA_ENABLED: "true"
+      TELTONIKA_TCP_HOST: "0.0.0.0"
+      TELTONIKA_TCP_PORT: "5027"
     volumes:
       - gm-uploads-v09:/app/uploads
     command: >

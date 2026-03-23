@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # OpenAI (optional — for fuel receipt OCR)
     OPENAI_API_KEY: str = ""
 
+    # Teltonika GPS tracker
+    TELTONIKA_ENABLED: bool = False
+    TELTONIKA_TCP_HOST: str = "0.0.0.0"
+    TELTONIKA_TCP_PORT: int = 5027
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

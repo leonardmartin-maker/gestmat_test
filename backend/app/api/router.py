@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from app.core.deps import get_current_user
 
 from app.api.routers.public import auth, health, scan as public_scan, stripe_webhook
-from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs, fuel_receipts, incidents, subscription, sites
+from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs, fuel_receipts, incidents, subscription, sites, gps_devices
 
 api_router = APIRouter()
 
@@ -95,6 +95,10 @@ protected_router.include_router(incidents.write_router, prefix="/incidents", tag
 # Subscription / billing
 protected_router.include_router(subscription.router, prefix="/subscription", tags=["subscription"])
 protected_router.include_router(subscription.admin_router, prefix="/subscription", tags=["subscription"])
+
+# GPS Devices
+protected_router.include_router(gps_devices.router, prefix="/gps-devices", tags=["gps-devices"])
+protected_router.include_router(gps_devices.admin_router, prefix="/admin/gps-devices", tags=["admin-gps-devices"])
 
 # Employee self-service scan (authenticated — any role)
 protected_router.include_router(public_scan.router, prefix="/employee-scan", tags=["employee-scan"])

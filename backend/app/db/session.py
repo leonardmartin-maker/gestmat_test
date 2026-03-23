@@ -12,6 +12,7 @@ from app.models.asset import Asset
 from app.models.employee import Employee
 from app.models.event import Event
 from app.models.event_photo import EventPhoto  # noqa: F401 — ensure table is created
+from app.models.gps_device import GpsDevice  # noqa: F401 — ensure table is created
 
 # enregistrer les modèles audités
 register_audit_models(Asset, Employee, Event)

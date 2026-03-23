@@ -1,3 +1,5 @@
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,7 +11,32 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.middleware.audit import AuditContextMiddleware
 
-app = FastAPI(title="gestionmateriel")
+logger = logging.getLogger("teltonika")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    if settings.TELTONIKA_ENABLED:
+        from app.services.teltonika import start_tcp_server, stop_tcp_server
+        server = await start_tcp_server(
+            settings.TELTONIKA_TCP_HOST,
+            settings.TELTONIKA_TCP_PORT,
+        )
+        logger.info("Teltonika TCP server started in lifespan")
+    else:
+        server = None
+
+    yield
+
+    # Shutdown
+    if server:
+        from app.services.teltonika import stop_tcp_server
+        await stop_tcp_server(server)
+        logger.info("Teltonika TCP server stopped in lifespan")
+
+
+app = FastAPI(title="gestionmateriel", lifespan=lifespan)
 
 # Serve uploaded files
 _upload_dir = Path(settings.UPLOAD_DIR)
