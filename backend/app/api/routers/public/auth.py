@@ -37,6 +37,12 @@ def _slugify(name: str) -> str:
 
 @router.post("/register", response_model=TokenOut)
 def register(payload: RegisterIn, db: Session = Depends(get_db)):
+    # --- Inscription fermée temporairement (beta privée) ---
+    raise HTTPException(
+        status_code=403,
+        detail="Les inscriptions sont temporairement fermees. Contactez admin@swissworkingdev.ch pour un acces.",
+    )
+
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email deja utilise")
 
