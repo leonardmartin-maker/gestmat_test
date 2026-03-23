@@ -33,6 +33,7 @@ import {
   Mail,
   Phone,
   MapPin,
+  Building2,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -315,9 +316,9 @@ export default function LandingPage() {
               color="#eab308"
             />
             <BentoCard
-              icon={Users}
-              title="Multi-utilisateurs"
-              desc="Admin, manager, employe — chacun son role."
+              icon={Building2}
+              title="Multi-site & depots"
+              desc="Gerez plusieurs sites, filtrez par depot, scopez les managers."
               color="#6C5CE7"
             />
             <BentoCard
@@ -360,7 +361,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-3 max-w-4xl mx-auto">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-5xl mx-auto">
             <PricingCard
               name="Essai"
               price="Gratuit"
@@ -371,44 +372,35 @@ export default function LandingPage() {
             />
             <PricingCard
               name="Standard"
-              price="4"
+              price="4.90"
               period="CHF / employe / mois"
-              features={["Vehicules & EPI illimites", "QR codes & scan mobile", "Incidents & maintenance", "Dashboard temps reel", "Support email"]}
+              features={["Vehicules & EPI illimites", "QR codes & scan mobile", "Incidents & maintenance", "Tickets carburant (OCR)", "Dashboard temps reel", "Support email"]}
               cta="Choisir"
               href="/register"
               highlight
             />
             <PricingCard
+              name="Multi-site"
+              price="5.90"
+              period="CHF / employe / mois"
+              features={["Tout le plan Standard", "Multi-site / multi-depot", "Filtrage par site", "Manager scope par depot", "Support prioritaire"]}
+              cta="Choisir"
+              href="/register"
+            />
+            <PricingCard
               name="Entreprise"
               price="Sur devis"
               period="50+ employes"
-              features={["Tout le plan Standard", "Support dedie & SLA", "Personnalisation", "Formation sur site", "Facturation annuelle"]}
+              features={["Tout le plan Multi-site", "Support dedie & SLA", "Personnalisation", "Formation sur site", "Facturation annuelle"]}
               cta="Nous contacter"
               href="mailto:contact@swissworktogether.ch"
             />
           </div>
 
-          {/* Option carburant */}
-          <div className="mt-10 max-w-md mx-auto">
-            <div className="rounded-xl bg-white border border-gray-200 p-5 flex items-center gap-4 shadow-sm">
-              <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-[#f97316]/10 flex-shrink-0">
-                <Fuel className="h-5 w-5 text-[#f97316]" />
-              </div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-gray-900">Module tickets carburant</div>
-                <div className="text-xs text-gray-500">Photo, OCR automatique, validation manager</div>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-lg font-bold text-gray-900">+0.50</div>
-                <div className="text-xs text-gray-400">CHF / empl. / mois</div>
-              </div>
-            </div>
-          </div>
-
           {/* Exemple de calcul */}
-          <div className="mt-8 text-center">
+          <div className="mt-10 text-center">
             <p className="text-sm text-gray-400">
-              Exemple : 10 employes avec carburant = <span className="font-semibold text-gray-600">45 CHF / mois</span>
+              Exemple : 10 employes Standard = <span className="font-semibold text-gray-600">49 CHF / mois</span>
             </p>
           </div>
         </div>
