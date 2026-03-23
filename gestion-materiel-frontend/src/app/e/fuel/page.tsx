@@ -14,8 +14,8 @@ import {
   type OcrPreview,
 } from "@/lib/api/fuel-receipts";
 import { config } from "@/lib/config";
-import { PhotoCapture } from "@/components/app/PhotoCapture";
 import { PhotoEditor } from "@/components/app/PhotoEditor";
+import { DocumentScanner } from "@/components/app/DocumentScanner";
 import {
   Fuel,
   ArrowLeft,
@@ -28,6 +28,8 @@ import {
   Send,
   RotateCcw,
   Sparkles,
+  ScanLine,
+  Camera,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -74,9 +76,9 @@ export default function FuelReceiptPage() {
   // Form state
   const [step, setStep] = useState<FormStep>("upload");
   const [selectedVehicle, setSelectedVehicle] = useState<number | "">("");
-  const [photo, setPhoto] = useState<File[]>([]);
+  const [photo, setPhoto] = useState<File | null>(null);
   const [editedPhoto, setEditedPhoto] = useState<File | null>(null);
-  const onPhotoChange = useCallback((files: File[]) => setPhoto(files), []);
+  const [showScanner, setShowScanner] = useState(false);
 
   // OCR preview state
   const [analyzing, setAnalyzing] = useState(false);
@@ -119,9 +121,16 @@ export default function FuelReceiptPage() {
     loadData();
   }, [loadData]);
 
+  // Scanner capture → go to edit
+  const handleScanCapture = (file: File) => {
+    setPhoto(file);
+    setShowScanner(false);
+    setStep("edit");
+  };
+
   // Step 1 → Step 2: Go to photo editor
   const handleGoToEdit = () => {
-    if (!photo[0] || !selectedVehicle) return;
+    if (!photo || !selectedVehicle) return;
     setStep("edit");
   };
 
@@ -180,7 +189,7 @@ export default function FuelReceiptPage() {
     setOcrLiters("");
     setOcrDate("");
     setNotes("");
-    setPhoto([]);
+    setPhoto(null);
     setSuccessMsg("");
     setErrorMsg("");
   };
@@ -247,6 +256,14 @@ export default function FuelReceiptPage() {
       {/* ============================================================= */}
       {/* STEP 1: Take photo + select vehicle                            */}
       {/* ============================================================= */}
+      {/* Document Scanner (full-screen overlay) */}
+      {showScanner && (
+        <DocumentScanner
+          onCapture={handleScanCapture}
+          onCancel={() => setShowScanner(false)}
+        />
+      )}
+
       {step === "upload" && (
         <div className="rounded-2xl bg-white shadow-sm border p-5 space-y-4">
           <h3 className="font-semibold text-gray-900">Nouveau ticket</h3>
@@ -274,13 +291,52 @@ export default function FuelReceiptPage() {
             )}
           </div>
 
-          {/* Photo */}
-          <PhotoCapture
-            label="Photo du ticket *"
-            maxPhotos={1}
-            required
-            onChange={onPhotoChange}
-          />
+          {/* Scan ticket button */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Photo du ticket *</label>
+            {photo ? (
+              <div className="relative rounded-xl border-2 border-[#6C5CE7]/30 bg-[#6C5CE7]/5 p-3">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={URL.createObjectURL(photo)}
+                    alt="Ticket scanné"
+                    className="h-20 w-16 rounded-lg object-cover border"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{photo.name}</p>
+                    <p className="text-xs text-gray-500">{(photo.size / 1024).toFixed(0)} Ko</p>
+                  </div>
+                  <button
+                    onClick={() => setPhoto(null)}
+                    className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors"
+                  >
+                    <X className="h-4 w-4 text-red-600" />
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="mt-2 w-full rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  Rescanner
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowScanner(true)}
+                disabled={!selectedVehicle}
+                className="w-full rounded-xl border-2 border-dashed border-[#6C5CE7]/40 bg-[#6C5CE7]/5 hover:bg-[#6C5CE7]/10 disabled:bg-gray-50 disabled:border-gray-200 disabled:cursor-not-allowed py-8 text-sm font-medium transition-colors flex flex-col items-center justify-center gap-2"
+              >
+                <ScanLine className={`h-8 w-8 ${selectedVehicle ? "text-[#6C5CE7]" : "text-gray-300"}`} />
+                <span className={selectedVehicle ? "text-[#6C5CE7]" : "text-gray-400"}>
+                  Scanner le ticket
+                </span>
+                {!selectedVehicle && (
+                  <span className="text-xs text-gray-400">Sélectionnez d'abord un véhicule</span>
+                )}
+              </button>
+            )}
+          </div>
 
           {/* Error */}
           {errorMsg && (
@@ -292,7 +348,7 @@ export default function FuelReceiptPage() {
           {/* Next: edit photo */}
           <button
             onClick={handleGoToEdit}
-            disabled={!selectedVehicle || photo.length < 1}
+            disabled={!selectedVehicle || !photo}
             className="w-full rounded-xl bg-[#6C5CE7] hover:bg-[#5A4BD1] disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
           >
             <Sparkles className="h-4 w-4" />
@@ -304,9 +360,9 @@ export default function FuelReceiptPage() {
       {/* ============================================================= */}
       {/* STEP 2: Edit photo (rotate / crop)                             */}
       {/* ============================================================= */}
-      {step === "edit" && photo[0] && (
+      {step === "edit" && photo && (
         <PhotoEditor
-          file={photo[0]}
+          file={photo}
           onConfirm={handlePhotoEdited}
           onCancel={() => setStep("upload")}
         />
