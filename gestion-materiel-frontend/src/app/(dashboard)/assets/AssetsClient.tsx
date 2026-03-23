@@ -71,6 +71,7 @@ export default function AssetsClient() {
   const [employeeFilter, setEmployeeFilter] = useState<string>("ALL");
   const [employees, setEmployees] = useState<EmployeeOut[]>([]);
   const [epiCategories, setEpiCategories] = useState<EpiCategoryOut[]>([]);
+  const [epiCatFilter, setEpiCatFilter] = useState<string>("ALL");
 
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -183,7 +184,12 @@ export default function AssetsClient() {
   const colCount = 4 + extraCols + 1;
 
   const sortedRows = useMemo(() => {
-    const copy = [...rows];
+    let copy = [...rows];
+
+    // Client-side EPI category filter
+    if (epiCatFilter !== "ALL") {
+      copy = copy.filter((a) => a.category === "EPI" && a.epi_category_id === Number(epiCatFilter));
+    }
 
     const getVal = (a: AssetOutWithAssignee) => {
       if (sort === "name") return a.name ?? "";
@@ -201,7 +207,7 @@ export default function AssetsClient() {
     });
 
     return copy;
-  }, [rows, sort, dir]);
+  }, [rows, sort, dir, epiCatFilter]);
 
   return (
     <div className="space-y-4">
@@ -236,6 +242,7 @@ export default function AssetsClient() {
               onValueChange={(v) => {
                 setOffset(0);
                 setCategory(v);
+                if (v === "VEHICLE") setEpiCatFilter("ALL");
               }}
             >
               <SelectTrigger className="w-[160px] rounded-xl">
@@ -268,6 +275,28 @@ export default function AssetsClient() {
                 <SelectItem value="STOLEN">Volé</SelectItem>
               </SelectContent>
             </Select>
+
+            {(category === "EPI" || category === "ALL") && epiCategories.length > 0 && (
+              <Select
+                value={epiCatFilter}
+                onValueChange={(v) => {
+                  setOffset(0);
+                  setEpiCatFilter(v);
+                }}
+              >
+                <SelectTrigger className="w-[200px] rounded-xl">
+                  <SelectValue placeholder="Catégorie EPI" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Toutes les cat. EPI</SelectItem>
+                  {epiCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
+                      {cat.icon ?? ""} {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {canWrite && employees.length > 0 && (
               <Select
@@ -392,6 +421,16 @@ export default function AssetsClient() {
               />
             )}
 
+            {epiCatFilter !== "ALL" && (
+              <FilterChip
+                label={`EPI: ${epiCategories.find((c) => String(c.id) === epiCatFilter)?.name ?? epiCatFilter}`}
+                onClear={() => {
+                  setOffset(0);
+                  setEpiCatFilter("ALL");
+                }}
+              />
+            )}
+
             {employeeFilter !== "ALL" && (
               <FilterChip
                 label={`Employe: ${employees.find((e) => String(e.id) === employeeFilter)?.first_name ?? employeeFilter}`}
@@ -403,7 +442,7 @@ export default function AssetsClient() {
             )}
           </div>
 
-          {(debouncedSearch.trim() || category !== "ALL" || status !== "ALL" || employeeFilter !== "ALL") && (
+          {(debouncedSearch.trim() || category !== "ALL" || status !== "ALL" || epiCatFilter !== "ALL" || employeeFilter !== "ALL") && (
             <Button
               variant="outline"
               size="sm"
@@ -412,6 +451,7 @@ export default function AssetsClient() {
                 setSearch("");
                 setCategory("ALL");
                 setStatus("ALL");
+                setEpiCatFilter("ALL");
                 setEmployeeFilter("ALL");
               }}
             >
