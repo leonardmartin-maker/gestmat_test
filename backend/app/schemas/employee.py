@@ -8,6 +8,7 @@ class EmployeeCreate(BaseModel):
     last_name: str = Field(min_length=1, max_length=100)
     employee_code: str | None = Field(default=None, max_length=50)
     email: EmailStr | None = None
+    site_id: int | None = None
 
     @field_validator("first_name", "last_name", "employee_code")
     @classmethod
@@ -24,6 +25,7 @@ class EmployeeUpdate(BaseModel):
     employee_code: str | None = Field(default=None, max_length=50)
     email: EmailStr | None = None
     active: bool | None = None
+    site_id: int | None = None
 
     @field_validator("first_name", "last_name", "employee_code")
     @classmethod
@@ -41,6 +43,8 @@ class EmployeeOut(BaseModel):
     employee_code: str | None
     email: str | None
     active: bool
+    site_id: int | None = None
+    site_name: str | None = None
     is_deleted: bool = False
     deleted_at: datetime | None = None
 

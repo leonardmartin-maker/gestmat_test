@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { updateAsset, type AssetOut, type AssetUpdate } from "@/lib/api/assets";
 import { listEpiCategories, type EpiCategoryOut } from "@/lib/api/epi-categories";
 import { listKnownModels } from "@/lib/api/maintenance-templates";
+import { listSites, type SiteOut } from "@/lib/api/sites";
 import { EPI_PREDEFINED_ATTRIBUTES } from "@/lib/constants/epi-attributes";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -46,6 +47,8 @@ export function EditAssetDialog({
   const [epiAttrs, setEpiAttrs] = useState<Record<string, string>>(asset.epi_attributes || {});
   const [knownModels, setKnownModels] = useState<string[]>([]);
   const [modelName, setModelName] = useState(asset.model_name || "");
+  const [sites, setSites] = useState<SiteOut[]>([]);
+  const [siteId, setSiteId] = useState<string>(asset.site_id ? String(asset.site_id) : "__none__");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
@@ -55,6 +58,7 @@ export function EditAssetDialog({
   useEffect(() => {
     listEpiCategories().then((res) => setEpiCategories(res.data)).catch(() => {});
     listKnownModels().then(setKnownModels).catch(() => {});
+    listSites({ active: true }).then((res) => setSites(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -62,6 +66,7 @@ export function EditAssetDialog({
       form.reset(assetToDefaults(asset));
       setEpiAttrs(asset.epi_attributes || {});
       setModelName(asset.model_name || "");
+      setSiteId(asset.site_id ? String(asset.site_id) : "__none__");
       setApiError(null);
     }
   }, [open, asset]);
@@ -90,6 +95,7 @@ export function EditAssetDialog({
         epi_attributes: Object.keys(epiAttrs).length > 0 ? epiAttrs : null,
         serial_number: values.serial_number || null,
         notes: values.notes || null,
+        site_id: siteId !== "__none__" ? Number(siteId) : null,
       };
       await updateAsset(asset.id, payload);
       setOpen(false);
@@ -235,6 +241,24 @@ export function EditAssetDialog({
                 )}
 
               </>
+            )}
+
+            {/* Site */}
+            {sites.length > 0 && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Site / Dépôt</Label>
+                <Select value={siteId} onValueChange={setSiteId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un site…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Aucun site</SelectItem>
+                    {sites.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             <div className="space-y-2 md:col-span-2">

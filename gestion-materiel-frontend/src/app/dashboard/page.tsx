@@ -6,6 +6,7 @@ import { getDashboardSummary, type DashboardSummaryOut } from "@/lib/api/dashboa
 import { listEvents, type EventOut } from "@/lib/api/events";
 import { listIncidents, type IncidentOut } from "@/lib/api/incidents";
 import { getTasksOverview, type MaintenanceTasksOverview } from "@/lib/api/maintenance-tasks";
+import { listSites, type SiteOut } from "@/lib/api/sites";
 import { config } from "@/lib/config";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +29,10 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Building2,
 } from "lucide-react";
 import { http } from "@/lib/api/http";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSubscription, type SubscriptionResponse } from "@/lib/api/subscription";
 import { useAuth } from "@/lib/auth/auth-context";
 
@@ -46,6 +49,8 @@ export default function DashboardPage() {
   const [fuelPending, setFuelPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [subInfo, setSubInfo] = useState<SubscriptionResponse | null>(null);
+  const [sites, setSites] = useState<SiteOut[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("ALL");
   const { isAdmin } = useAuth();
 
   // Drawer
@@ -60,9 +65,11 @@ export default function DashboardPage() {
     weekAgo.setDate(weekAgo.getDate() - 6);
     weekAgo.setHours(0, 0, 0, 0);
 
+    const siteParam = siteFilter !== "ALL" ? { site_id: Number(siteFilter) } : {};
+
     try {
       const [d, ev, inc, maint, fuelRes] = await Promise.all([
-        getDashboardSummary(),
+        getDashboardSummary(siteParam),
         listEvents({ from: weekAgo.toISOString(), to: now.toISOString(), limit: 10 }),
         listIncidents({ limit: 10 }).catch(() => ({ data: [], meta: { total: 0 } })),
         getTasksOverview().catch(() => null),
@@ -86,7 +93,11 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    listSites({ active: true }).then((res) => setSites(res.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => { refresh(); }, [siteFilter]);
 
   const [showIncidents, setShowIncidents] = useState(true);
   const [showMovements, setShowMovements] = useState(true);
@@ -104,10 +115,30 @@ export default function DashboardPage() {
             Vue d&apos;ensemble — parc, incidents, maintenance, carburant
           </p>
         </div>
-        <Button variant="outline" className="rounded-xl gap-2" onClick={refresh} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "..." : "Rafraichir"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {sites.length > 0 && (
+            <Select
+              value={siteFilter}
+              onValueChange={(v) => setSiteFilter(v)}
+            >
+              <SelectTrigger className="w-[180px] rounded-xl">
+                <SelectValue placeholder="Site" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tous les sites</SelectItem>
+                {sites.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button variant="outline" className="rounded-xl gap-2" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "..." : "Rafraichir"}
+          </Button>
+        </div>
       </div>
 
       {/* Trial banner */}

@@ -6,6 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { listAssetsWithAssignee, type AssetOutWithAssignee } from "@/lib/api/assets";
 import { listEmployees, type EmployeeOut } from "@/lib/api/employees";
 import { listEpiCategories, type EpiCategoryOut } from "@/lib/api/epi-categories";
+import { listSites, type SiteOut } from "@/lib/api/sites";
 import { exportAssetsCsv } from "@/lib/api/export";
 import { CreateAssetDialog } from "@/components/app/CreateAssetDialog";
 import { AssetDrawer } from "@/components/app/AssetDrawer";
@@ -16,7 +17,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Search, Download, Plus, ChevronLeft, ChevronRight, PackageSearch, Filter, QrCode, RefreshCw } from "lucide-react";
+import { Package, Search, Download, Plus, ChevronLeft, ChevronRight, PackageSearch, Filter, QrCode, RefreshCw, Building2 } from "lucide-react";
 import Link from "next/link";
 
 function epiCategoryLabel(a: AssetOutWithAssignee, cats: EpiCategoryOut[]) {
@@ -72,6 +73,8 @@ export default function AssetsClient() {
   const [employees, setEmployees] = useState<EmployeeOut[]>([]);
   const [epiCategories, setEpiCategories] = useState<EpiCategoryOut[]>([]);
   const [epiCatFilter, setEpiCatFilter] = useState<string>("ALL");
+  const [sites, setSites] = useState<SiteOut[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("ALL");
 
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -95,6 +98,7 @@ export default function AssetsClient() {
         .catch(() => {});
     }
     listEpiCategories().then((res) => setEpiCategories(res.data)).catch(() => {});
+    listSites({ active: true }).then((res) => setSites(res.data)).catch(() => {});
   }, [canWrite]);
 
   // debounce search
@@ -154,10 +158,11 @@ export default function AssetsClient() {
       status: status === "ALL" ? undefined : status,
       category: category === "ALL" ? undefined : category,
       assigned_to_employee_id: employeeFilter !== "ALL" ? Number(employeeFilter) : undefined,
+      site_id: siteFilter !== "ALL" ? Number(siteFilter) : undefined,
       limit,
       offset,
     };
-  }, [debouncedSearch, status, category, employeeFilter, limit, offset]);
+  }, [debouncedSearch, status, category, employeeFilter, siteFilter, limit, offset]);
 
   useEffect(() => {
     setLoading(true);
@@ -292,6 +297,28 @@ export default function AssetsClient() {
                   {epiCategories.map((cat) => (
                     <SelectItem key={cat.id} value={String(cat.id)}>
                       {cat.icon ?? ""} {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {sites.length > 0 && (
+              <Select
+                value={siteFilter}
+                onValueChange={(v) => {
+                  setOffset(0);
+                  setSiteFilter(v);
+                }}
+              >
+                <SelectTrigger className="w-[180px] rounded-xl">
+                  <SelectValue placeholder="Site" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tous les sites</SelectItem>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -441,6 +468,16 @@ export default function AssetsClient() {
               />
             )}
 
+            {siteFilter !== "ALL" && (
+              <FilterChip
+                label={`Site: ${sites.find((s) => String(s.id) === siteFilter)?.name ?? siteFilter}`}
+                onClear={() => {
+                  setOffset(0);
+                  setSiteFilter("ALL");
+                }}
+              />
+            )}
+
             {employeeFilter !== "ALL" && (
               <FilterChip
                 label={`Employe: ${employees.find((e) => String(e.id) === employeeFilter)?.first_name ?? employeeFilter}`}
@@ -452,7 +489,7 @@ export default function AssetsClient() {
             )}
           </div>
 
-          {(debouncedSearch.trim() || category !== "ALL" || status !== "ALL" || epiCatFilter !== "ALL" || employeeFilter !== "ALL") && (
+          {(debouncedSearch.trim() || category !== "ALL" || status !== "ALL" || epiCatFilter !== "ALL" || employeeFilter !== "ALL" || siteFilter !== "ALL") && (
             <Button
               variant="outline"
               size="sm"
@@ -463,6 +500,7 @@ export default function AssetsClient() {
                 setStatus("ALL");
                 setEpiCatFilter("ALL");
                 setEmployeeFilter("ALL");
+                setSiteFilter("ALL");
               }}
             >
               Réinitialiser

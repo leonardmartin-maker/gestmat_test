@@ -13,7 +13,7 @@ export type DashboardSummaryOut = {
   last_7_days_events: number;
 };
 
-export async function getDashboardSummary() {
-  const res = await http.get<DashboardSummaryOut>("/dashboard/summary");
+export async function getDashboardSummary(params?: { site_id?: number }) {
+  const res = await http.get<DashboardSummaryOut>("/dashboard/summary", { params });
   return res.data;
 }

@@ -34,6 +34,7 @@ class AssetCreate(BaseModel):
     next_inspection_date: date | None = None
 
     notes: str | None = None
+    site_id: int | None = None
 
     @field_validator(*_TEXT_FIELDS)
     @classmethod
@@ -50,7 +51,7 @@ class AssetCreate(BaseModel):
             return None
         return v
 
-    @field_validator("km_current", "epi_category_id", mode="before")
+    @field_validator("km_current", "epi_category_id", "site_id", mode="before")
     @classmethod
     def empty_str_to_none_int(cls, v):
         if v == "" or v is None:
@@ -78,6 +79,7 @@ class AssetUpdate(BaseModel):
     next_inspection_date: date | None = None
 
     notes: str | None = None
+    site_id: int | None = None
 
     @field_validator(*_TEXT_FIELDS)
     @classmethod
@@ -94,7 +96,7 @@ class AssetUpdate(BaseModel):
             return None
         return v
 
-    @field_validator("km_current", "epi_category_id", mode="before")
+    @field_validator("km_current", "epi_category_id", "site_id", mode="before")
     @classmethod
     def empty_str_to_none_int(cls, v):
         if v == "" or v is None:
@@ -126,6 +128,9 @@ class AssetOut(BaseModel):
 
     purchase_invoice_path: str | None = None
     purchase_invoice_url: str | None = None
+
+    site_id: int | None = None
+    site_name: str | None = None
 
     is_deleted: bool = False
     deleted_at: datetime | None = None

@@ -7,6 +7,8 @@ export type EmployeeOut = {
   employee_code: string | null;
   email: string | null;
   active: boolean;
+  site_id: number | null;
+  site_name?: string | null;
 };
 
 export type Meta = { limit: number; offset: number; total: number; has_more?: boolean | null };
@@ -17,6 +19,7 @@ export type EmployeeCreate = {
   last_name: string;
   employee_code?: string | null;
   email?: string | null;
+  site_id?: number | null;
 };
 
 export type EmployeeUpdate = {
@@ -25,9 +28,10 @@ export type EmployeeUpdate = {
   employee_code?: string | null;
   email?: string | null;
   active?: boolean | null;
+  site_id?: number | null;
 };
 
-export async function listEmployees(params?: { search?: string; active?: boolean; limit?: number; offset?: number }) {
+export async function listEmployees(params?: { search?: string; active?: boolean; site_id?: number; limit?: number; offset?: number }) {
   const res = await http.get<EmployeeList>("/employees", { params: { limit: 50, offset: 0, ...params } });
   return res.data;
 }

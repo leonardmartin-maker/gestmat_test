@@ -6,7 +6,7 @@ import { RequireAuth } from "@/components/app/RequireAuth";
 import { RequireRole } from "@/components/app/RequireRole";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, FileText, Package, Users, UserCog, HardHat, Wrench, Trash2, RotateCcw } from "lucide-react";
+import { Shield, FileText, Package, Users, UserCog, HardHat, Wrench, Building2, Trash2, RotateCcw } from "lucide-react";
 import {
   listDeletedAssets,
   listAllEmployees,
@@ -120,6 +120,17 @@ function AdminContent() {
             </div>
             <div className="text-sm text-muted-foreground">
               Types d'équipements de protection
+            </div>
+          </div>
+        </Link>
+        <Link href="/admin/sites">
+          <div className="rounded-2xl shadow-sm border-0 card-hover p-5 cursor-pointer">
+            <div className="font-medium flex items-center gap-2">
+              <Building2 className="h-4 w-4" style={{ color: "#6C5CE7" }} />
+              Sites / Dépôts
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Gestion des sites et dépôts
             </div>
           </div>
         </Link>

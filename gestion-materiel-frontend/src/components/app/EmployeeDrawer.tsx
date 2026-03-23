@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getEmployee, updateEmployee, getEmployeeAssets, type EmployeeOut } from "@/lib/api/employees";
 import { listEvents, type EventOut } from "@/lib/api/events";
 import type { AssetOut } from "@/lib/api/assets";
+import { listSites, type SiteOut } from "@/lib/api/sites";
 import { useAuth } from "@/lib/auth/auth-context";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -12,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, UserX, UserCheck, Mail, Package, History, Truck, Shield, ExternalLink, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, UserX, UserCheck, Mail, Package, History, Truck, Shield, ExternalLink, Trash2, Building2 } from "lucide-react";
 import { deleteEmployee } from "@/lib/api/admin";
 
 export function EmployeeDrawer({
@@ -35,6 +37,8 @@ export function EmployeeDrawer({
   const [last, setLast] = useState("");
   const [code, setCode] = useState("");
   const [email, setEmail] = useState("");
+  const [empSiteId, setEmpSiteId] = useState<string>("__none__");
+  const [sites, setSites] = useState<SiteOut[]>([]);
 
   // New: assets & events
   const [assets, setAssets] = useState<AssetOut[]>([]);
@@ -55,6 +59,7 @@ export function EmployeeDrawer({
       setLast(e.last_name);
       setCode(e.employee_code ?? "");
       setEmail(e.email ?? "");
+      setEmpSiteId(e.site_id ? String(e.site_id) : "__none__");
       setAssets(empAssets);
       setEvents(empEvents.data);
     } catch (e: any) {
@@ -63,6 +68,10 @@ export function EmployeeDrawer({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    listSites({ active: true }).then((res) => setSites(res.data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!open || !employeeId) return;
@@ -87,6 +96,7 @@ export function EmployeeDrawer({
         last_name: last.trim(),
         employee_code: code.trim() ? code.trim() : null,
         email: email.trim() ? email.trim() : null,
+        site_id: empSiteId !== "__none__" ? Number(empSiteId) : null,
       });
       await load();
       onUpdated();
@@ -201,6 +211,30 @@ export function EmployeeDrawer({
                 </Label>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="employe@exemple.ch" readOnly={!canWrite} />
               </div>
+
+              {sites.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-[#6C5CE7]" />
+                    Site / Dépôt
+                  </Label>
+                  {canWrite ? (
+                    <Select value={empSiteId} onValueChange={setEmpSiteId}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Sélectionner un site…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Aucun site</SelectItem>
+                        {sites.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={sites.find((s) => String(s.id) === empSiteId)?.name ?? "Aucun"} readOnly />
+                  )}
+                </div>
+              )}
 
               {canWrite && (
                 <div className="flex justify-between gap-2">

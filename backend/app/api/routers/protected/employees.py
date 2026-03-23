@@ -9,10 +9,12 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_company_id, get_db
 from app.core.permissions import require_admin, require_manager_or_admin
 from app.core.security import hash_password
+from app.core.deps import get_current_user
 from app.models.asset import Asset
 from app.models.employee import Employee
 from app.models.event import Event
 from app.models.user import User
+from app.models.site import Site
 from app.schemas.asset import AssetOut
 from app.schemas.common import Meta
 from app.schemas.employee import (
@@ -39,16 +41,24 @@ admin_router = APIRouter(dependencies=[Depends(require_admin)])  # ADMIN only
 def list_employees(
     db: Session = Depends(get_db),
     company_id: int = Depends(get_company_id),
+    current_user: User = Depends(get_current_user),
     search: str | None = None,
     active: bool | None = None,
+    site_id: int | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
+    # Manager scoping
+    if current_user.role == "MANAGER" and current_user.site_id and site_id is None:
+        site_id = current_user.site_id
+
     q = db.query(Employee).filter(
         Employee.company_id == company_id,
         Employee.is_deleted.is_(False),
     )
 
+    if site_id is not None:
+        q = q.filter(Employee.site_id == site_id)
     if active is not None:
         q = q.filter(Employee.active == active)
 
@@ -71,7 +81,20 @@ def list_employees(
     )
     has_more = offset + limit < total
 
-    return {"data": items, "meta": Meta(limit=limit, offset=offset, total=total, has_more=has_more)}
+    # Enrich with site names
+    _site_ids = list({e.site_id for e in items if e.site_id})
+    _site_map = {}
+    if _site_ids:
+        _site_rows = db.query(Site.id, Site.name).filter(Site.id.in_(_site_ids)).all()
+        _site_map = {s.id: s.name for s in _site_rows}
+
+    data = []
+    for emp in items:
+        out = EmployeeOut.model_validate(emp)
+        out.site_name = _site_map.get(emp.site_id) if emp.site_id else None
+        data.append(out)
+
+    return {"data": data, "meta": Meta(limit=limit, offset=offset, total=total, has_more=has_more)}
 
 
 @router.get("/{employee_id}", response_model=EmployeeOut)

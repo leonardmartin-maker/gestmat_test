@@ -8,6 +8,7 @@ class Asset(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id"), nullable=True, index=True)
 
     category: Mapped[str] = mapped_column(String(20))  # VEHICLE / EPI
     name: Mapped[str] = mapped_column(String(200))

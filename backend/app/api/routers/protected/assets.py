@@ -16,6 +16,7 @@ from app.models.employee import Employee
 from app.models.event import Event
 from app.models.user import User
 from app.models.event_photo import EventPhoto
+from app.models.site import Site
 from app.schemas.asset import (
     AssetAssignee,
     AssetCreate,
@@ -45,6 +46,7 @@ def list_assets(
     search: str | None = None,
     status: str | None = None,
     category: str | None = None,
+    site_id: int | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -53,6 +55,8 @@ def list_assets(
         Asset.is_deleted.is_(False),
     )
 
+    if site_id is not None:
+        q = q.filter(Asset.site_id == site_id)
     if status:
         q = q.filter(Asset.status == status)
     if category:
@@ -85,14 +89,22 @@ def list_assets_with_assignee(
     search: str | None = None,
     status: str | None = None,
     category: str | None = None,
+    site_id: int | None = Query(None),
     assigned_to_employee_id: int | None = None,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
+    # Manager scoping: default to their site if set
+    if current_user.role == "MANAGER" and current_user.site_id and site_id is None:
+        site_id = current_user.site_id
+
     asset_q = db.query(Asset).filter(
         Asset.company_id == company_id,
         Asset.is_deleted.is_(False),
     )
+
+    if site_id is not None:
+        asset_q = asset_q.filter(Asset.site_id == site_id)
 
     # Filter: assets assigned to a specific employee
     if assigned_to_employee_id is not None:
@@ -197,6 +209,13 @@ def list_assets_with_assignee(
         .all()
     )
 
+    # Enrich with site names
+    _site_ids = list({a.site_id for a, *_ in rows if a.site_id})
+    _site_map = {}
+    if _site_ids:
+        _site_rows = db.query(Site.id, Site.name).filter(Site.id.in_(_site_ids)).all()
+        _site_map = {s.id: s.name for s in _site_rows}
+
     out: list[AssetOutWithAssignee] = []
     for asset, event_type, employee_id, occurred_at, emp in rows:
         assigned_to = None
@@ -219,6 +238,7 @@ def list_assets_with_assignee(
         row.assigned_to = assigned_to
         row.last_event_type = event_type
         row.last_event_at = occurred_at
+        row.site_name = _site_map.get(asset.site_id) if asset.site_id else None
         out.append(row)
 
     return {"data": out, "meta": Meta(limit=limit, offset=offset, total=total, has_more=has_more)}

@@ -26,6 +26,8 @@ export type AssetOut = {
   next_inspection_date: string | null;
   notes: string | null;
   purchase_invoice_path: string | null;
+  site_id: number | null;
+  site_name?: string | null;
 };
 
 export type AssetOutWithAssignee = AssetOut & {
@@ -48,6 +50,7 @@ export type ListAssetsParams = {
   status?: string;
   category?: string;
   assigned_to_employee_id?: number;
+  site_id?: number;
   limit?: number;
   offset?: number;
 };
@@ -106,6 +109,7 @@ export type AssetCreate = {
   serial_number?: string | null;
   next_inspection_date?: string | null; // YYYY-MM-DD
   notes?: string | null;
+  site_id?: number | null;
 };
 
 export async function createAsset(payload: AssetCreate) {
@@ -129,6 +133,7 @@ export type AssetUpdate = {
   serial_number?: string | null;
   next_inspection_date?: string | null;
   notes?: string | null;
+  site_id?: number | null;
 };
 
 export async function updateAsset(assetId: number, payload: AssetUpdate) {

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from app.core.deps import get_current_user
 
 from app.api.routers.public import auth, health, scan as public_scan, stripe_webhook
-from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs, fuel_receipts, incidents, subscription
+from app.api.routers.protected import me, employees, assets, scan, events, dashboard, audit_logs, export, users, maintenance, epi_categories, maintenance_templates, maintenance_tasks, maintenance_logs, fuel_receipts, incidents, subscription, sites
 
 api_router = APIRouter()
 
@@ -59,6 +59,10 @@ protected_router.include_router(users.router, prefix="/admin/users", tags=["admi
 # EPI Categories
 protected_router.include_router(epi_categories.router, prefix="/epi-categories", tags=["epi-categories"])
 protected_router.include_router(epi_categories.admin_router, prefix="/admin/epi-categories", tags=["admin-epi-categories"])
+
+# Sites / Depots
+protected_router.include_router(sites.router, prefix="/sites", tags=["sites"])
+protected_router.include_router(sites.admin_router, prefix="/admin/sites", tags=["admin-sites"])
 
 # Maintenance (legacy overview)
 protected_router.include_router(maintenance.router, prefix="/maintenance", tags=["maintenance"])

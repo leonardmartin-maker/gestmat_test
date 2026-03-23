@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { listEmployees, type EmployeeOut } from "@/lib/api/employees";
+import { listSites, type SiteOut } from "@/lib/api/sites";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { EmployeeDrawer } from "@/components/app/EmployeeDrawer";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { Users, Search, Download, UserSearch, ChevronLeft, ChevronRight, CircleCheck, XCircle } from "lucide-react";
+import { Users, Search, Download, UserSearch, ChevronLeft, ChevronRight, CircleCheck, XCircle, Building2 } from "lucide-react";
 
 function label(e: EmployeeOut) {
   const name = `${e.first_name} ${e.last_name}`.trim();
@@ -35,6 +36,9 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const [sites, setSites] = useState<SiteOut[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("ALL");
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -42,6 +46,10 @@ export default function EmployeesPage() {
     setSelectedId(id);
     setDrawerOpen(true);
   };
+
+  useEffect(() => {
+    listSites({ active: true }).then((res) => setSites(res.data)).catch(() => {});
+  }, []);
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   useEffect(() => {
@@ -53,10 +61,11 @@ export default function EmployeesPage() {
     return {
       search: debouncedSearch.trim() ? debouncedSearch.trim() : undefined,
       active: active === "ALL" ? undefined : active === "true",
+      site_id: siteFilter !== "ALL" ? Number(siteFilter) : undefined,
       limit,
       offset,
     };
-  }, [debouncedSearch, active, limit, offset]);
+  }, [debouncedSearch, active, siteFilter, limit, offset]);
 
   useEffect(() => {
     setLoading(true);
@@ -118,6 +127,28 @@ export default function EmployeesPage() {
             </SelectContent>
           </Select>
 
+          {sites.length > 0 && (
+            <Select
+              value={siteFilter}
+              onValueChange={(v) => {
+                setOffset(0);
+                setSiteFilter(v);
+              }}
+            >
+              <SelectTrigger className="w-[180px] rounded-xl">
+                <SelectValue placeholder="Site" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tous les sites</SelectItem>
+                {sites.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select
             value={String(limit)}
             onValueChange={(v) => {
@@ -159,6 +190,7 @@ export default function EmployeesPage() {
             <TableRow>
               <TableHead>Employé</TableHead>
               <TableHead>Code</TableHead>
+              <TableHead>Site</TableHead>
               <TableHead>Actif</TableHead>
             </TableRow>
           </TableHeader>
@@ -168,6 +200,13 @@ export default function EmployeesPage() {
               <TableRow key={e.id} className="cursor-pointer hover:bg-purple-50/50" onClick={() => openDrawer(e.id)}>
                 <TableCell className="font-medium">{label(e)}</TableCell>
                 <TableCell>{e.employee_code ?? "—"}</TableCell>
+                <TableCell>
+                  {e.site_name ? (
+                    <span className="text-sm">{e.site_name}</span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   {e.active ? (
                     <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
@@ -186,7 +225,7 @@ export default function EmployeesPage() {
 
             {!loading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-12">
+                <TableCell colSpan={4} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2">
                     <UserSearch className="h-10 w-10 text-muted-foreground/50" />
                     <p className="text-sm text-muted-foreground">Aucun résultat</p>

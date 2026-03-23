@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createAsset, uploadPurchaseInvoice, type AssetCreate } from "@/lib/api/assets";
 import { listEpiCategories, type EpiCategoryOut } from "@/lib/api/epi-categories";
 import { listKnownModels } from "@/lib/api/maintenance-templates";
+import { listSites, type SiteOut } from "@/lib/api/sites";
 import { EPI_PREDEFINED_ATTRIBUTES } from "@/lib/constants/epi-attributes";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -42,6 +43,8 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
   const [knownModels, setKnownModels] = useState<string[]>([]);
   const [modelName, setModelName] = useState("");
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [sites, setSites] = useState<SiteOut[]>([]);
+  const [siteId, setSiteId] = useState<string>("__none__");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
@@ -55,6 +58,7 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
   useEffect(() => {
     listEpiCategories().then((res) => setEpiCategories(res.data)).catch(() => {});
     listKnownModels().then(setKnownModels).catch(() => {});
+    listSites({ active: true }).then((res) => setSites(res.data)).catch(() => {});
   }, []);
 
   // Get enabled attributes for selected EPI category
@@ -76,6 +80,7 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
         epi_attributes: Object.keys(epiAttrs).length > 0 ? epiAttrs : null,
         serial_number: values.serial_number ?? null,
         notes: values.notes ?? null,
+        site_id: siteId !== "__none__" ? Number(siteId) : null,
       };
       const created = await createAsset(payload);
       // Upload invoice if file selected
@@ -91,6 +96,7 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
       setEpiAttrs({});
       setModelName("");
       setInvoiceFile(null);
+      setSiteId("__none__");
       onCreated();
     } catch (e: any) {
       setApiError(e?.response?.data?.detail || e?.message || "Erreur");
@@ -243,6 +249,24 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
                 )}
 
               </>
+            )}
+
+            {/* Site */}
+            {sites.length > 0 && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Site / Dépôt</Label>
+                <Select value={siteId} onValueChange={setSiteId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un site…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Aucun site</SelectItem>
+                    {sites.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             {/* Facture d'achat */}
