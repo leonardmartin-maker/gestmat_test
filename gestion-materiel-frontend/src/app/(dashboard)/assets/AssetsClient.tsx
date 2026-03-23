@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 import { listAssetsWithAssignee, type AssetOutWithAssignee } from "@/lib/api/assets";
 import { listEmployees, type EmployeeOut } from "@/lib/api/employees";
+import { listEpiCategories, type EpiCategoryOut } from "@/lib/api/epi-categories";
 import { exportAssetsCsv } from "@/lib/api/export";
 import { CreateAssetDialog } from "@/components/app/CreateAssetDialog";
 import { AssetDrawer } from "@/components/app/AssetDrawer";
@@ -17,6 +18,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, Search, Download, Plus, ChevronLeft, ChevronRight, PackageSearch, Filter, QrCode } from "lucide-react";
 import Link from "next/link";
+
+function epiCategoryLabel(a: AssetOutWithAssignee, cats: EpiCategoryOut[]) {
+  if (a.category !== "EPI") return null;
+  if (a.epi_category_id) {
+    const cat = cats.find((c) => c.id === a.epi_category_id);
+    if (cat) return `${cat.icon ?? ""} ${cat.name}`.trim();
+  }
+  return a.epi_type ?? null;
+}
 
 function assigneeLabel(a: AssetOutWithAssignee) {
   const asg = a.assigned_to;
@@ -60,6 +70,7 @@ export default function AssetsClient() {
   const [category, setCategory] = useState<string>("ALL");
   const [employeeFilter, setEmployeeFilter] = useState<string>("ALL");
   const [employees, setEmployees] = useState<EmployeeOut[]>([]);
+  const [epiCategories, setEpiCategories] = useState<EpiCategoryOut[]>([]);
 
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -75,13 +86,14 @@ export default function AssetsClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Load employees for filter (admin/manager only)
+  // Load employees for filter (admin/manager only) + EPI categories
   useEffect(() => {
     if (canWrite) {
       listEmployees({ active: true, limit: 200 })
         .then((res) => setEmployees(res.data))
         .catch(() => {});
     }
+    listEpiCategories().then((res) => setEpiCategories(res.data)).catch(() => {});
   }, [canWrite]);
 
   // debounce search
@@ -442,7 +454,12 @@ export default function AssetsClient() {
               <TableRow key={a.id} className="cursor-pointer hover:bg-purple-50/50" onClick={() => openDrawer(a.id)}>
                 <TableCell className="font-medium">
                   {a.name}
-                  <div className="text-xs text-muted-foreground">public_id: {a.public_id}</div>
+                  {a.category === "EPI" && (() => {
+                    const epiLabel = epiCategoryLabel(a, epiCategories);
+                    return epiLabel ? (
+                      <div className="text-xs text-[#6C5CE7] font-normal">{epiLabel}</div>
+                    ) : null;
+                  })()}
                 </TableCell>
 
                 <TableCell>
