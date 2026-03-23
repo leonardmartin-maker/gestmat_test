@@ -17,6 +17,11 @@ from app.models.incident import Incident
 from app.models.epi_category import EpiCategory
 from app.models.maintenance_task import MaintenanceTask
 from app.models.subscription import Plan, Subscription
+from app.models.audit_log import AuditLog
+from app.models.fuel_receipt import FuelReceipt
+from app.models.event_photo import EventPhoto
+from app.models.maintenance_log import MaintenanceLog
+from app.models.site import Site
 from app.schemas.auth import RegisterIn, LoginIn, TokenOut
 
 router = APIRouter()
@@ -296,14 +301,23 @@ def start_demo(db: Session = Depends(get_db)):
     for old_co in old_demos:
         cid = old_co.id
         # Delete in order (FK constraints)
+        # First: tables that reference events
+        event_ids = [e.id for e in db.query(Event.id).filter(Event.company_id == cid).all()]
+        if event_ids:
+            db.query(EventPhoto).filter(EventPhoto.event_id.in_(event_ids)).delete(synchronize_session=False)
+        db.query(MaintenanceLog).filter(MaintenanceLog.company_id == cid).delete()
         db.query(MaintenanceTask).filter(MaintenanceTask.company_id == cid).delete()
+        db.query(FuelReceipt).filter(FuelReceipt.company_id == cid).delete()
         db.query(Incident).filter(Incident.company_id == cid).delete()
         db.query(Event).filter(Event.company_id == cid).delete()
         db.query(Asset).filter(Asset.company_id == cid).delete()
         db.query(EpiCategory).filter(EpiCategory.company_id == cid).delete()
         db.query(Employee).filter(Employee.company_id == cid).delete()
         db.query(Subscription).filter(Subscription.company_id == cid).delete()
+        # audit_logs references users — delete before users
+        db.query(AuditLog).filter(AuditLog.company_id == cid).delete()
         db.query(User).filter(User.company_id == cid).delete()
+        db.query(Site).filter(Site.company_id == cid).delete()
         db.delete(old_co)
     if old_demos:
         db.commit()
