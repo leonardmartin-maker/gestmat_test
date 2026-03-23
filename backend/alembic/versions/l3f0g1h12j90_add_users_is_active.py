@@ -7,6 +7,7 @@ Create Date: 2026-03-23
 from typing import Sequence, Union
 
 from alembic import op
+from sqlalchemy import inspect
 import sqlalchemy as sa
 
 
@@ -17,8 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"))
-    op.create_index("ix_users_is_active", "users", ["is_active"])
+    conn = op.get_bind()
+    insp = inspect(conn)
+    columns = [c["name"] for c in insp.get_columns("users")]
+    if "is_active" not in columns:
+        op.add_column("users", sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"))
+    indexes = [ix["name"] for ix in insp.get_indexes("users")]
+    if "ix_users_is_active" not in indexes:
+        op.create_index("ix_users_is_active", "users", ["is_active"])
 
 
 def downgrade() -> None:
