@@ -32,7 +32,6 @@ import {
   Crown,
   Loader2,
   ExternalLink,
-  Fuel,
   Sparkles,
 } from "lucide-react";
 
@@ -54,7 +53,6 @@ function SettingsClient() {
   const [saving, setSaving] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [withFuel, setWithFuel] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Company form
@@ -119,7 +117,7 @@ function SettingsClient() {
   const handleCheckout = async (planCode: string) => {
     setCheckoutLoading(true);
     try {
-      const { checkout_url } = await createCheckoutSession(planCode, withFuel);
+      const { checkout_url } = await createCheckoutSession(planCode, false);
       window.location.href = checkout_url;
     } catch (e: any) {
       alert(e?.response?.data?.detail || "Erreur lors de la creation de la session de paiement");
@@ -297,7 +295,9 @@ function SettingsClient() {
                     <div className="font-semibold">{sub.plan_name}</div>
                     <div className="text-xs text-muted-foreground">
                       {sub.plan_code === "STANDARD"
-                        ? "4 CHF / employe / mois"
+                        ? "4.90 CHF / employe / mois"
+                        : sub.plan_code === "MULTI_SITE"
+                        ? "5.90 CHF / employe / mois"
                         : sub.plan_code === "TRIAL"
                         ? "Essai gratuit 14 jours"
                         : sub.plan_code}
@@ -378,10 +378,10 @@ function SettingsClient() {
                 <div>
                   <div className="font-bold text-lg text-gray-900">Plan Standard</div>
                   <div className="text-sm text-gray-500 mt-1">
-                    Tout inclus : vehicules, EPI, QR, incidents, maintenance, dashboard
+                    Tout inclus : vehicules, EPI, QR, incidents, maintenance, carburant
                   </div>
                   <div className="mt-3">
-                    <span className="text-3xl font-bold text-gray-900">4 CHF</span>
+                    <span className="text-3xl font-bold text-gray-900">4.90 CHF</span>
                     <span className="text-sm text-gray-500 ml-1">/ employe / mois</span>
                   </div>
                 </div>
@@ -402,33 +402,15 @@ function SettingsClient() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  Tickets carburant (OCR)
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                   Dashboard temps reel
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                   Support email
-                </div>
-              </div>
-
-              {/* Fuel option */}
-              <div className="mt-4 rounded-xl bg-white border border-gray-200 p-4 flex items-center gap-4">
-                <input
-                  type="checkbox"
-                  id="fuel-option"
-                  checked={withFuel}
-                  onChange={(e) => setWithFuel(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-[#6C5CE7] focus:ring-[#6C5CE7]"
-                />
-                <label htmlFor="fuel-option" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Fuel className="h-4 w-4 text-[#f97316]" />
-                    <span className="text-sm font-medium text-gray-900">Module tickets carburant</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5">Photo, OCR automatique, validation manager</div>
-                </label>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-gray-900">+0.50 CHF</div>
-                  <div className="text-xs text-gray-400">/ empl. / mois</div>
                 </div>
               </div>
 
@@ -445,7 +427,7 @@ function SettingsClient() {
                 ) : (
                   <>
                     <CreditCard className="h-5 w-5" />
-                    S&apos;abonner — {withFuel ? "4.50" : "4.00"} CHF / employe / mois
+                    S&apos;abonner — 4.90 CHF / employe / mois
                   </>
                 )}
               </Button>
@@ -453,6 +435,66 @@ function SettingsClient() {
               <p className="text-xs text-center text-gray-400 mt-2">
                 Paiement securise par Stripe. Annulable a tout moment.
               </p>
+            </div>
+
+            {/* Plan Multi-site */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <div className="flex items-start justify-between flex-wrap gap-4">
+                <div>
+                  <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
+                    Plan Multi-site
+                    <Building2 className="h-4 w-4 text-[#6C5CE7]" />
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    Tout le Standard + gestion multi-site / multi-depot
+                  </div>
+                  <div className="mt-3">
+                    <span className="text-3xl font-bold text-gray-900">5.90 CHF</span>
+                    <span className="text-sm text-gray-500 ml-1">/ employe / mois</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 mt-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  Tout le plan Standard
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  Multi-site / multi-depot
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  Filtrage par site
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  Manager scope par depot
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  Support prioritaire
+                </div>
+              </div>
+
+              <Button
+                className="mt-4 w-full rounded-xl bg-[#6C5CE7] hover:bg-[#5A4BD1] text-white py-3 text-base gap-2"
+                onClick={() => handleCheckout("MULTI_SITE")}
+                disabled={checkoutLoading}
+              >
+                {checkoutLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Redirection vers Stripe...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-5 w-5" />
+                    S&apos;abonner — 5.90 CHF / employe / mois
+                  </>
+                )}
+              </Button>
             </div>
 
             {/* Enterprise */}
