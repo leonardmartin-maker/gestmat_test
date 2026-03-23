@@ -202,10 +202,11 @@ export default function EmployeeAssetPage() {
 
   if (!asset) return null;
 
-  const canTake = asset.status === "AVAILABLE";
+  const canTake = asset.status === "AVAILABLE" && fromScan;
   const canReturn = asset.status === "ASSIGNED" && fromScan;
+  const showTakeScanHint = asset.status === "AVAILABLE" && !fromScan;
   const showReturnScanHint = asset.status === "ASSIGNED" && !fromScan;
-  const locked = asset.status === "MAINTENANCE" || asset.status === "RETIRED";
+  const locked = asset.status === "MAINTENANCE" || asset.status === "RETIRED" || asset.status === "DESTROYED" || asset.status === "STOLEN";
 
   return (
     <div className="space-y-4">
@@ -245,6 +246,23 @@ export default function EmployeeAssetPage() {
             Ce matériel est {asset.status === "MAINTENANCE" ? "en maintenance" : "retiré du service"}.
             Contactez votre responsable.
           </p>
+        </div>
+      )}
+
+      {/* ---- Take requires QR scan ---- */}
+      {showTakeScanHint && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 text-center space-y-3">
+          <ScanLine className="h-8 w-8 text-blue-500 mx-auto" />
+          <p className="text-sm text-blue-800 font-medium">
+            Pour prendre ce matériel, scannez le QR code collé dessus avec le scanner de l&apos;application.
+          </p>
+          <Link
+            href="/e"
+            className="inline-flex items-center gap-2 text-sm text-[#6C5CE7] hover:text-[#5A4BD1] font-medium transition-colors"
+          >
+            <ScanLine className="h-4 w-4" />
+            Ouvrir le scanner
+          </Link>
         </div>
       )}
 

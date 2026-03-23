@@ -331,7 +331,7 @@ export default function EmployeeScanPage() {
         ) : (
           <div className="space-y-2">
             {availableAssets.map((a) => (
-              <AssetCard key={a.id} asset={a} onClick={() => router.push(`/e/${a.public_id}`)} variant="available" />
+              <AssetCard key={a.id} asset={a} variant="available" />
             ))}
           </div>
         )}
@@ -442,6 +442,12 @@ function AssetCard({
         <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
           <ScanLine className="h-3 w-3" />
           Scannez le QR pour retourner
+        </div>
+      )}
+      {variant === "available" && (
+        <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
+          <ScanLine className="h-3 w-3" />
+          Scannez le QR pour prendre
         </div>
       )}
     </Tag>
