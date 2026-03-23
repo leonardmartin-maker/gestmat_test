@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Tag, Info, History, Clock, Wrench, Gauge, AlertTriangle, X, Trash2 } from "lucide-react";
+import { RefreshCw, Tag, Info, History, Clock, Wrench, Gauge, AlertTriangle, X, Trash2, FileText, Upload, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-import { getAsset, getAssetHistory, updateAsset, type AssetHistoryOut, type AssetOut } from "@/lib/api/assets";
+import { getAsset, getAssetHistory, updateAsset, uploadPurchaseInvoice, type AssetHistoryOut, type AssetOut } from "@/lib/api/assets";
 import { deleteAsset } from "@/lib/api/admin";
+import { EditAssetDialog } from "@/components/app/EditAssetDialog";
 import { listTasks, generateTasks, updateKm, type MaintenanceTaskOut } from "@/lib/api/maintenance-tasks";
 import { getAssetMaintenanceLogs, type MaintenanceLogOut } from "@/lib/api/maintenance-logs";
 import { EPI_PREDEFINED_ATTRIBUTES } from "@/lib/constants/epi-attributes";
@@ -303,6 +304,7 @@ export function AssetDrawer({ open, onOpenChange, assetId, onDeleted }: Props) {
               {/* Actions */}
               {canWrite && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  <EditAssetDialog asset={asset} onUpdated={refresh} />
                   {isAvailable && (
                     <AssignAssetDialog publicId={asset.public_id} isVehicle={!!isVehicle} onDone={refresh} />
                   )}
@@ -325,6 +327,48 @@ export function AssetDrawer({ open, onOpenChange, assetId, onDeleted }: Props) {
                     <Trash2 className="h-3.5 w-3.5" />
                     Supprimer
                   </Button>
+                </div>
+              )}
+
+              {/* Facture d'achat */}
+              {canWrite && (
+                <div className="rounded-xl border bg-[#F8F7FF] p-3 space-y-2">
+                  <div className="text-sm font-medium flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-[#6C5CE7]" />
+                    Facture d&apos;achat
+                  </div>
+                  {asset.purchase_invoice_path ? (
+                    <a
+                      href={`${config.apiBaseUrl}/uploads/${asset.purchase_invoice_path}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-2 text-sm text-[#6C5CE7] hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Voir la facture
+                    </a>
+                  ) : (
+                    <p className="text-xs text-gray-400">Aucune facture</p>
+                  )}
+                  <label className="cursor-pointer inline-flex items-center gap-2 text-xs text-gray-500 hover:text-[#6C5CE7] bg-white border rounded-xl px-3 py-1.5">
+                    <Upload className="h-3.5 w-3.5" />
+                    {asset.purchase_invoice_path ? "Remplacer" : "Ajouter"}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          await uploadPurchaseInvoice(asset.id, file);
+                          refresh();
+                        } catch {
+                          alert("Erreur upload facture");
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               )}
 

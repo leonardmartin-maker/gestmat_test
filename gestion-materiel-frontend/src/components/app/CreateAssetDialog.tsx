@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { createAsset, type AssetCreate } from "@/lib/api/assets";
+import { createAsset, uploadPurchaseInvoice, type AssetCreate } from "@/lib/api/assets";
 import { listEpiCategories, type EpiCategoryOut } from "@/lib/api/epi-categories";
 import { listKnownModels } from "@/lib/api/maintenance-templates";
 import { EPI_PREDEFINED_ATTRIBUTES } from "@/lib/constants/epi-attributes";
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Upload, FileText } from "lucide-react";
 
 const schema = z.object({
   category: z.enum(["VEHICLE", "EPI"]),
@@ -41,6 +41,7 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
   const [epiAttrs, setEpiAttrs] = useState<Record<string, string>>({});
   const [knownModels, setKnownModels] = useState<string[]>([]);
   const [modelName, setModelName] = useState("");
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
@@ -76,11 +77,20 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
         serial_number: values.serial_number ?? null,
         notes: values.notes ?? null,
       };
-      await createAsset(payload);
+      const created = await createAsset(payload);
+      // Upload invoice if file selected
+      if (invoiceFile && created?.id) {
+        try {
+          await uploadPurchaseInvoice(created.id, invoiceFile);
+        } catch {
+          // Non-blocking: asset created but invoice upload failed
+        }
+      }
       setOpen(false);
       form.reset({ category: "VEHICLE", name: "" });
       setEpiAttrs({});
       setModelName("");
+      setInvoiceFile(null);
       onCreated();
     } catch (e: any) {
       setApiError(e?.response?.data?.detail || e?.message || "Erreur");
@@ -241,6 +251,24 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
                 )}
               </>
             )}
+
+            {/* Facture d'achat */}
+            <div className="space-y-2 md:col-span-2">
+              <Label className="flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-[#6C5CE7]" />
+                Facture d&apos;achat
+              </Label>
+              <label className="cursor-pointer inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C5CE7] bg-gray-50 border rounded-xl px-3 py-2 w-full">
+                <Upload className="h-3.5 w-3.5" />
+                {invoiceFile ? invoiceFile.name : "Choisir un fichier (PDF, JPG, PNG)"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
 
             <div className="space-y-2 md:col-span-2">
               <Label>Notes</Label>

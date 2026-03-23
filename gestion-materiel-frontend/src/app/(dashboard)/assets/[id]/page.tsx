@@ -13,7 +13,8 @@ import { ReturnAssetDialog } from "@/components/app/ReturnAssetDialog";
 import { EditAssetDialog } from "@/components/app/EditAssetDialog";
 import { useAuth } from "@/lib/auth/auth-context";
 import { config } from "@/lib/config";
-import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat, User } from "lucide-react";
+import { deleteAsset } from "@/lib/api/admin";
+import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat, User, Trash2 } from "lucide-react";
 
 const ATTR_LABEL: Record<string, string> = Object.fromEntries(
   EPI_PREDEFINED_ATTRIBUTES.map((a) => [a.key, a.label])
@@ -214,6 +215,16 @@ export default function AssetDetailPage() {
   const isAvailable = asset.status === "AVAILABLE";
   const isMaintenance = asset.status === "MAINTENANCE";
 
+  const handleDelete = async () => {
+    if (!confirm(`Supprimer le matériel "${asset.name}" ?\nCette action est réversible (soft delete).`)) return;
+    try {
+      await deleteAsset(asset.id);
+      router.push("/assets");
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur lors de la suppression");
+    }
+  };
+
   const handleToggleMaintenance = async () => {
     const newStatus = isMaintenance ? "AVAILABLE" : "MAINTENANCE";
     try {
@@ -260,6 +271,12 @@ export default function AssetDetailPage() {
             <Button variant="outline" size="sm" className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={handleToggleMaintenance}>
               <Wrench className="h-3.5 w-3.5" />
               Remettre disponible
+            </Button>
+          )}
+          {canWrite && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50" onClick={handleDelete}>
+              <Trash2 className="h-3.5 w-3.5" />
+              Supprimer
             </Button>
           )}
           <Button variant="outline" onClick={() => router.push("/assets")}>
