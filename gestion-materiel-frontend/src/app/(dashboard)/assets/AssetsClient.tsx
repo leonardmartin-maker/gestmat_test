@@ -16,7 +16,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Search, Download, Plus, ChevronLeft, ChevronRight, PackageSearch, Filter, QrCode } from "lucide-react";
+import { Package, Search, Download, Plus, ChevronLeft, ChevronRight, PackageSearch, Filter, QrCode, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 function epiCategoryLabel(a: AssetOutWithAssignee, cats: EpiCategoryOut[]) {
@@ -361,6 +361,16 @@ export default function AssetsClient() {
                 <SelectItem value="last_event_at:asc">Dernière activité (ancien)</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={reload}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+              Actualiser
+            </Button>
 
             {canWrite && (
               <>
