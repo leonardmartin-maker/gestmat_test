@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Tag, Info, History, Clock, Wrench, Gauge, AlertTriangle, X, Trash2, FileText, Upload, ExternalLink } from "lucide-react";
+import { RefreshCw, Tag, Info, History, Clock, Wrench, Gauge, AlertTriangle, X, Trash2, FileText, Upload, ExternalLink, Flame, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -174,6 +174,21 @@ export function AssetDrawer({ open, onOpenChange, assetId, onDeleted }: Props) {
   const isAvailable = asset?.status === "AVAILABLE";
   const isAssigned = asset?.status === "ASSIGNED";
   const isMaintenance = asset?.status === "MAINTENANCE";
+  const isDestroyed = asset?.status === "DESTROYED";
+  const isStolen = asset?.status === "STOLEN";
+  const isRetired = asset?.status === "RETIRED";
+  const canMarkDestroyedOrStolen = !isDestroyed && !isStolen && !isRetired;
+
+  const handleSetStatus = async (newStatus: "DESTROYED" | "STOLEN", label: string) => {
+    if (!asset) return;
+    if (!confirm(`Marquer "${asset.name}" comme ${label} ?`)) return;
+    try {
+      await updateAsset(asset.id, { status: newStatus });
+      refresh();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur");
+    }
+  };
 
   const handleDelete = async () => {
     if (!asset) return;
@@ -322,6 +337,18 @@ export function AssetDrawer({ open, onOpenChange, assetId, onDeleted }: Props) {
                       <Wrench className="h-3.5 w-3.5" />
                       Remettre disponible
                     </Button>
+                  )}
+                  {canMarkDestroyedOrStolen && (
+                    <>
+                      <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-orange-600 border-orange-300 hover:bg-orange-50" onClick={() => handleSetStatus("DESTROYED", "Détruit")}>
+                        <Flame className="h-3.5 w-3.5" />
+                        Détruit
+                      </Button>
+                      <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-red-900 border-red-400 hover:bg-red-50" onClick={() => handleSetStatus("STOLEN", "Volé")}>
+                        <ShieldAlert className="h-3.5 w-3.5" />
+                        Volé
+                      </Button>
+                    </>
                   )}
                   <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-red-600 border-red-300 hover:bg-red-50" onClick={handleDelete}>
                     <Trash2 className="h-3.5 w-3.5" />

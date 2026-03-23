@@ -14,7 +14,7 @@ import { EditAssetDialog } from "@/components/app/EditAssetDialog";
 import { useAuth } from "@/lib/auth/auth-context";
 import { config } from "@/lib/config";
 import { deleteAsset } from "@/lib/api/admin";
-import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat, User, Trash2 } from "lucide-react";
+import { AlertTriangle, X, Wrench, FileText, Upload, ExternalLink, HardHat, User, Trash2, Flame, ShieldAlert } from "lucide-react";
 
 const ATTR_LABEL: Record<string, string> = Object.fromEntries(
   EPI_PREDEFINED_ATTRIBUTES.map((a) => [a.key, a.label])
@@ -235,6 +235,21 @@ export default function AssetDetailPage() {
     }
   };
 
+  const handleSetStatus = async (newStatus: "DESTROYED" | "STOLEN", label: string) => {
+    if (!confirm(`Marquer "${asset.name}" comme ${label} ?`)) return;
+    try {
+      await updateAsset(assetId, { status: newStatus });
+      refresh();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Erreur");
+    }
+  };
+
+  const isDestroyed = asset.status === "DESTROYED";
+  const isStolen = asset.status === "STOLEN";
+  const isRetired = asset.status === "RETIRED";
+  const canMarkDestroyedOrStolen = !isDestroyed && !isStolen && !isRetired;
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -272,6 +287,18 @@ export default function AssetDetailPage() {
               <Wrench className="h-3.5 w-3.5" />
               Remettre disponible
             </Button>
+          )}
+          {canWrite && canMarkDestroyedOrStolen && (
+            <>
+              <Button variant="outline" size="sm" className="gap-1.5 text-orange-600 border-orange-300 hover:bg-orange-50" onClick={() => handleSetStatus("DESTROYED", "Détruit")}>
+                <Flame className="h-3.5 w-3.5" />
+                Détruit
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5 text-red-900 border-red-400 hover:bg-red-50" onClick={() => handleSetStatus("STOLEN", "Volé")}>
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Volé
+              </Button>
+            </>
           )}
           {canWrite && (
             <Button variant="outline" size="sm" className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50" onClick={handleDelete}>

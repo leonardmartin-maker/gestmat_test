@@ -20,7 +20,6 @@ import { Pencil } from "lucide-react";
 const schema = z.object({
   name: z.string().min(1),
   ref: z.string().optional().nullable(),
-  status: z.enum(["AVAILABLE", "ASSIGNED", "MAINTENANCE", "RETIRED", "DESTROYED", "STOLEN"]),
   plate: z.string().optional().nullable(),
   km_current: z.coerce.number().int().nonnegative().optional().nullable(),
   insurance_date: z.string().optional().nullable(),
@@ -80,7 +79,6 @@ export function EditAssetDialog({
       const payload: AssetUpdate = {
         name: values.name,
         ref: values.ref || null,
-        status: values.status,
         plate: values.plate || null,
         model_name: isVehicle && modelName ? modelName : null,
         km_current: values.km_current ?? null,
@@ -123,26 +121,6 @@ export function EditAssetDialog({
             <div className="space-y-2">
               <Label>Nom *</Label>
               <Input {...form.register("name")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Statut</Label>
-              <Select
-                value={form.watch("status")}
-                onValueChange={(v) => form.setValue("status", v as any)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AVAILABLE">Disponible</SelectItem>
-                  <SelectItem value="ASSIGNED">Attribué</SelectItem>
-                  <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                  <SelectItem value="RETIRED">Retiré</SelectItem>
-                  <SelectItem value="DESTROYED">Détruit</SelectItem>
-                  <SelectItem value="STOLEN">Volé</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">
@@ -256,13 +234,6 @@ export function EditAssetDialog({
                   </div>
                 )}
 
-                {/* Fallback manual EPI type */}
-                {!selectedCatId && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Type EPI (manuel)</Label>
-                    <Input {...form.register("epi_type")} />
-                  </div>
-                )}
               </>
             )}
 
@@ -292,7 +263,6 @@ function assetToDefaults(asset: AssetOut): FormValues {
   return {
     name: asset.name,
     ref: asset.ref ?? "",
-    status: (asset.status as FormValues["status"]) ?? "AVAILABLE",
     plate: asset.plate ?? "",
     km_current: asset.km_current ?? null,
     insurance_date: (asset as any).insurance_date ?? "",

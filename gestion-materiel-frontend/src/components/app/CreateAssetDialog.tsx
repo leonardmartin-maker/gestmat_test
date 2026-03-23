@@ -242,13 +242,6 @@ export function CreateAssetDialog({ onCreated }: { onCreated: () => void }) {
                   </div>
                 )}
 
-                {/* Fallback: manual EPI type if no category selected */}
-                {!selectedCatId && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Type EPI (manuel)</Label>
-                    <Input {...form.register("epi_type")} placeholder="Ex: Casque, Gants…" />
-                  </div>
-                )}
               </>
             )}
 
