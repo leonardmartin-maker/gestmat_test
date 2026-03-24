@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.middleware.audit import AuditContextMiddleware
+from app.core.middleware.maintenance import MaintenanceMiddleware
 
 logger = logging.getLogger("teltonika")
 
@@ -52,6 +53,7 @@ app.add_middleware(
 )
 
 app.add_middleware(AuditContextMiddleware)
+app.add_middleware(MaintenanceMiddleware)
 app.include_router(api_router)
 
 

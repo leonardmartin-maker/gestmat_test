@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     TELTONIKA_TCP_HOST: str = "0.0.0.0"
     TELTONIKA_TCP_PORT: int = 5027
 
+    # Maintenance mode (staging)
+    MAINTENANCE_MODE: bool = False
+    MAINTENANCE_ALLOWED_EMAILS: str = ""  # comma-separated
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
