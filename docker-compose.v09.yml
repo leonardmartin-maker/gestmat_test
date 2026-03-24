@@ -36,7 +36,8 @@ services:
       TELTONIKA_ENABLED: "true"
       TELTONIKA_TCP_HOST: "0.0.0.0"
       TELTONIKA_TCP_PORT: "5027"
-      MAINTENANCE_MODE: "false"
+      MAINTENANCE_MODE: "true"
+      MAINTENANCE_ALLOWED_EMAILS: "admin@swissworktogether.ch"
     volumes:
       - gm-uploads-v09:/app/uploads
     command: >
